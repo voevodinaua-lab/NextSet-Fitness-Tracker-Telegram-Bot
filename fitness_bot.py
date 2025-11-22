@@ -1024,10 +1024,10 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 def main():
     """Запуск бота"""
-    TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+    TOKEN = os.getenv('BOT_TOKEN')
     
     if not TOKEN:
-        print("❌ Ошибка: TELEGRAM_BOT_TOKEN не установлен")
+        print("❌ Ошибка: BOT_TOKEN не установлен")
         print("Убедитесь, что переменная окружения установлена в Railway")
         return
     
@@ -1102,4 +1102,5 @@ def main():
     application.run_polling()
 
 if __name__ == '__main__':
+
     main()
