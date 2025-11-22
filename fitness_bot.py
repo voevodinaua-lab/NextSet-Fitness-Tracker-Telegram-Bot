@@ -8,12 +8,14 @@ def keep_railway_awake():
     def ping():
         while True:
             try:
-                domain = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+                domain = os.getenv('RAILWAY_STATIC_URL') or os.getenv('RAILWAY_PUBLIC_DOMAIN')
                 if domain:
-                    response = requests.get(f"https://{domain}", timeout=10)
-                    print(f"✅ Пинг отправлен: {response.status_code}")
-            except Exception as e:
-                print(f"⚠️ Пинг не удался: {e}")
+                    # Добавляем таймаут чтобы не блокировать бота
+                    requests.get(f"https://{domain}", timeout=5)
+                    print(f"✅ Пинг отправлен")
+            except:
+                # Игнорируем ошибки пинга
+                pass
             time.sleep(300)  # Каждые 5 минут
     
     thread = threading.Thread(target=ping, daemon=True)
@@ -960,4 +962,5 @@ def main():
     application.run_polling()
 
 if __name__ == '__main__':
+
     main()
