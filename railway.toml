@@ -1,0 +1,7 @@
+[deploy]
+  numReplicas = 1
+
+[service]
+  numReplicas = 1
+  softConcurrency = 1
+  hardConcurrency = 1
