@@ -1,1 +1,0 @@
-worker: python fitness_bot.py
