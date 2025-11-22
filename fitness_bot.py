@@ -1096,11 +1096,12 @@ def main():
         fallbacks=[CommandHandler('start', start)]
     )
     
-    application.add_handler(conv_handler)
-    
+    application.run_polling(drop_pending_updates=True)
+        
     print("Бот запускается...")
     application.run_polling()
 
 if __name__ == '__main__':
 
     main()
+
