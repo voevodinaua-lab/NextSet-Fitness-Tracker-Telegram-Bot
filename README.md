@@ -9,7 +9,7 @@ NextSet is an intelligent fitness tracking bot for Telegram that helps you monit
 - **📏 Body Measurements** - Track changes over time with trends
 - **📤 Data Export** - Export your fitness data to CSV/Excel
 - **✏️ Custom Exercises** - Personalize your exercise library
-- **💾 Reliable Storage** - SQLite database for data persistence
+- **💾 Reliable Storage** - PostdreSQL database for data persistence
 
 ## 🚀 Quick Start
 
