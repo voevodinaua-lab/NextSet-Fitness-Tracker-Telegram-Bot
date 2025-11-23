@@ -40,63 +40,62 @@ DEFAULT_STRENGTH_EXERCISES = [
 DEFAULT_CARDIO_EXERCISES = ["Бег на дорожке"]
 
 # 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА ПОДКЛЮЧЕНИЯ К БАЗЕ
-def debug_database_connection():
-    """Детальная диагностика подключения к базе"""
-    print("=== 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА БАЗЫ ДАННЫХ ===")
-    
-    database_url = os.getenv('DATABASE_URL')
-    if not database_url:
-        print("❌ DATABASE_URL не найден в переменных окружения")
-        return False
-    
-    # Скрываем пароль в логах для безопасности
-    safe_url = database_url.split('@')[0] + '@***'
-    print(f"📋 DATABASE_URL: {safe_url}")
-    
+def get_db_connection():
+    """Получить соединение с PostgreSQL - УЛЬТРА-ДИАГНОСТИКА"""
     try:
-        from urllib.parse import urlparse
-        import pg8000
+        database_url = os.getenv('DATABASE_URL')
+        print(f"🔍 DATABASE_URL: {database_url}")
         
+        if not database_url:
+            print("❌ DATABASE_URL не установлен")
+            return None
+        
+        from urllib.parse import urlparse
         url = urlparse(database_url)
         
-        print("🔧 Параметры подключения:")
+        print("🔧 Детальные параметры:")
         print(f"   Хост: {url.hostname}")
         print(f"   Порт: {url.port}")
-        print(f"   База: {url.path[1:]}")
         print(f"   Пользователь: {url.username}")
+        print(f"   База: {url.path[1:]}")
+        print(f"   Пароль длина: {len(url.password) if url.password else 0} символов")
         
-        # Тест подключения
-        print("🔧 Тестируем подключение...")
-        conn = pg8000.connect(
-            host=url.hostname,
-            port=url.port or 5432,
-            user=url.username,
-            password=url.password,
-            database=url.path[1:],
-            ssl_context=True,
-            timeout=10
-        )
-        
-        print("🎉 ✅ ПОДКЛЮЧЕНИЕ УСПЕШНО!")
-        
-        # Проверяем таблицу
-        print("🔧 Проверяем доступ к таблице users...")
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users")
-        result = cursor.fetchone()
-        print(f"🎉 ✅ Таблица users доступна, записей: {result[0]}")
-        
-        conn.close()
-        return True
-        
+        # Пробуем разные варианты подключения
+        print("🔧 Тест 1: Подключение с SSL...")
+        try:
+            conn = pg8000.connect(
+                host=url.hostname,
+                port=url.port or 5432,
+                user=url.username,
+                password=url.password,
+                database=url.path[1:],
+                ssl_context=True,
+                timeout=10
+            )
+            print("🎉 УСПЕХ с SSL!")
+            return conn
+        except Exception as e1:
+            print(f"💥 Не удалось с SSL: {e1}")
+            
+            print("🔧 Тест 2: Подключение без SSL...")
+            try:
+                conn = pg8000.connect(
+                    host=url.hostname,
+                    port=url.port or 5432,
+                    user=url.username,
+                    password=url.password,
+                    database=url.path[1:],
+                    timeout=10
+                )
+                print("🎉 УСПЕХ без SSL!")
+                return conn
+            except Exception as e2:
+                print(f"💥 Не удалось без SSL: {e2}")
+                return None
+                
     except Exception as e:
-        print(f"💥 ОШИБКА ПОДКЛЮЧЕНИЯ: {e}")
-        print("🔧 Возможные причины:")
-        print("   1. Неправильный пароль")
-        print("   2. Хост заблокирован firewall")
-        print("   3. Проблемы с SSL сертификатом")
-        print("   4. База данных не существует")
-        return False
+        print(f"💥 Общая ошибка: {e}")
+        return None
 
 # 📋 ОСНОВНЫЕ ФУНКЦИИ БАЗЫ ДАННЫХ
 def get_db_connection():
@@ -1443,6 +1442,7 @@ else:
 
 if __name__ == '__main__':
     main()
+
 
 
 
