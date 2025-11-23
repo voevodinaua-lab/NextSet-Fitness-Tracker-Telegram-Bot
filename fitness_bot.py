@@ -41,28 +41,48 @@ DEFAULT_CARDIO_EXERCISES = ["Бег на дорожке"]
 
 # PostgreSQL функции с pg8000
 def get_db_connection():
-    """Получить соединение с PostgreSQL"""
+    """Получить соединение с PostgreSQL - ДЕТАЛЬНАЯ ДИАГНОСТИКА"""
     try:
         database_url = os.getenv('DATABASE_URL')
+        print(f"🔍 DATABASE_URL: {database_url}")
+        
         if not database_url:
-            logger.error("❌ DATABASE_URL не установлен")
+            print("❌ DATABASE_URL не установлен")
             return None
         
         # Парсим DATABASE_URL
         from urllib.parse import urlparse
         url = urlparse(database_url)
         
+        print(f"🔍 Подключаемся к:")
+        print(f"   Хост: {url.hostname}")
+        print(f"   Порт: {url.port}")
+        print(f"   База: {url.path[1:]}")
+        print(f"   Пользователь: {url.username}")
+        print(f"   Пароль: {'*' * len(url.password) if url.password else 'нет'}")
+        
+        # Пробуем подключиться с таймаутом
+        import pg8000
         conn = pg8000.connect(
             host=url.hostname,
             port=url.port or 5432,
             user=url.username,
             password=url.password,
-            database=url.path[1:], # Убираем первый слэш
-            ssl_context=True 
+            database=url.path[1:],
+            ssl_context=True,
+            timeout=10  # 10 секунд таймаут
         )
+        
+        print("🎉 ПОДКЛЮЧЕНИЕ К БАЗЕ УСПЕШНО!")
         return conn
+        
     except Exception as e:
-        logger.error(f"❌ Ошибка подключения к PostgreSQL: {e}")
+        print(f"💥 КРИТИЧЕСКАЯ ОШИБКА ПОДКЛЮЧЕНИЯ: {e}")
+        print("🔧 Возможные причины:")
+        print("   - Неправильный пароль")
+        print("   - Хост недоступен")
+        print("   - Блокировка firewall")
+        print("   - Проблемы с SSL")
         return None
 
 def init_database():
@@ -1228,6 +1248,13 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return MAIN_MENU
 
 def main():
+    print("🔍 ТЕСТИРУЕМ ПОДКЛЮЧЕНИЕ К БАЗЕ...")
+test_conn = get_db_connection()
+if test_conn:
+    print("🎉 БАЗА ДАННЫХ РАБОТАЕТ!")
+    test_conn.close()
+else:
+    print("💥 НЕ УДАЛОСЬ ПОДКЛЮЧИТЬСЯ К БАЗЕ")
     # ДОБАВЬТЕ ЭТО ДЛЯ ДИАГНОСТИКИ:
     print("=== ЗАПУСК БОТА ===")
     print(f"Время: {datetime.now()}")
@@ -1358,5 +1385,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
