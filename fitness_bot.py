@@ -228,7 +228,9 @@ def get_default_user_data():
             'yearly_stats': {}
         }
     }
-    def get_user_data(user_id):
+
+# ИСПРАВЛЕНИЕ: ЭТА ФУНКЦИЯ ДОЛЖНА БЫТЬ ОТДЕЛЬНО, А НЕ ВНУТРИ get_default_user_data
+def get_user_data(user_id):
     """Получить данные пользователя"""
     return load_user_data(user_id)
 
@@ -1297,7 +1299,8 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     else:
         await update.message.reply_text("Пожалуйста, используйте кнопки меню")
         return MAIN_MENU
-        def main():
+
+def main():
     print("🚀 ЗАПУСК БОТА...")
     
     # 🔧 БЫСТРАЯ ПРОВЕРКА БАЗЫ ДАННЫХ (не блокирующая)
@@ -1425,3 +1428,4 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 if __name__ == '__main__':
     main()
+
