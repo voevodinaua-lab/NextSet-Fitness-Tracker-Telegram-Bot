@@ -29,8 +29,6 @@ logger = logging.getLogger(__name__)
     CARDIO_TYPE_SELECTION, INPUT_CARDIO_DETAILS
 ) = range(16)
 
-
-
 # База упражнений по умолчанию
 DEFAULT_STRENGTH_EXERCISES = [
     "Румынская тяга", "Ягодичный мостик", "Болгарский выпад",
@@ -309,24 +307,6 @@ def update_statistics(user_id, training):
     
     # Сохраняем обновленные данные
     save_user_data(user_id, user_data)
-
-def keep_railway_awake():
-    """Фоновая задача для поддержания активности Railway"""
-    def ping():
-        while True:
-            try:
-                domain = os.getenv('RAILWAY_STATIC_URL') or os.getenv('RAILWAY_PUBLIC_DOMAIN')
-                if domain:
-                    requests.get(f"https://{domain}", timeout=5)
-                    print(f"✅ Пинг отправлен")
-            except:
-                pass
-            time.sleep(300)
-    
-    thread = threading.Thread(target=ping, daemon=True)
-    thread.start()
-
-#keep_railway_awake()
 
 # Асинхронные функции бота
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1239,15 +1219,9 @@ def main():
         print("❌ Ошибка: BOT_TOKEN не установлен")
         return
      
-# Инициализируем базу данных
+    # Инициализируем базу данных
     if not init_database():
         print("⚠️  База данных не инициализирована, но бот запустится")
-    
-    TOKEN = os.getenv('BOT_TOKEN')
-    
-    if not TOKEN:
-        print("❌ Ошибка: BOT_TOKEN не установлен")
-        return
     
     print(f"✅ Токен получен, запускаем бота...")
     
@@ -1326,6 +1300,20 @@ def main():
     
     application.add_handler(conv_handler)
     
+    # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА (добавьте перед application.run_polling())
+    async def test_start(update: Update, context):
+        await update.message.reply_text("🎉 Тест! Бот работает!")
+
+    async def test_help(update: Update, context):
+        await update.message.reply_text("ℹ️ Тестовая помощь")
+
+    # ДОБАВЬТЕ ПРОСТЫЕ ОБРАБОТЧИКИ
+    application.add_handler(CommandHandler("test", test_start))
+    application.add_handler(CommandHandler("help", test_help))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, test_start))
+
+    print("✅ Добавлены тестовые команды: /test, /help")
+
     # Обработчик ошибок
     async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         error_msg = str(context.error)
@@ -1337,26 +1325,12 @@ def main():
     application.add_error_handler(error_handler)
     
     print("🚀 Бот запускается...")
-    # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА (добавьте перед application.run_polling())
-async def test_start(update: Update, context):
-    await update.message.reply_text("🎉 Тест! Бот работает!")
-
-async def test_help(update: Update, context):
-    await update.message.reply_text("ℹ️ Тестовая помощь")
-
-# ДОБАВЬТЕ ПРОСТЫЕ ОБРАБОТЧИКИ
-application.add_handler(CommandHandler("test", test_start))
-application.add_handler(CommandHandler("help", test_help))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, test_start))
-
-print("✅ Добавлены тестовые команды: /test, /help")
+    
     # Запускаем polling
-application.run_polling(
-    drop_pending_updates=True,
-    allowed_updates=Update.ALL_TYPES
+    application.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=Update.ALL_TYPES
     )
 
 if __name__ == '__main__':
-
     main()
-
