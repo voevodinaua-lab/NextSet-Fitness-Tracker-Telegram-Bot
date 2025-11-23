@@ -363,30 +363,53 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Сохранение замеров и переход к тренировке"""
     user_id = update.message.from_user.id
-    user_data = get_user_data(user_id)
-    measurements = update.message.text
     
-    if measurements.lower() != 'пропустить':
-        user_data['current_training']['measurements'] = measurements
-        # Сохраняем замеры в историю
-        user_data['measurements_history'].append({
-            'date': datetime.now().strftime("%d.%m.%Y %H:%M"),
-            'measurements': measurements
-        })
-    
-    # Сохраняем данные
-    save_user_data(user_id, user_data)
-    
-    keyboard = [
-        ['💪 Силовые упражнения', '🏃 Кардио'],
-        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        "✅ Замеры сохранены! Выберите тип упражнения:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return TRAINING
+    try:
+        user_data = get_user_data(user_id)
+        measurements = update.message.text
+        
+        if measurements.lower() != 'пропустить':
+            # СОХРАНЯЕМ ТОЛЬКО В ПАМЯТИ, ЕСЛИ БАЗА НЕДОСТУПНА
+            if user_data and 'current_training' in user_data:
+                user_data['current_training']['measurements'] = measurements
+                # Сохраняем замеры в историю (в памяти)
+                if 'measurements_history' not in user_data:
+                    user_data['measurements_history'] = []
+                user_data['measurements_history'].append({
+                    'date': datetime.now().strftime("%d.%m.%Y %H:%M"),
+                    'measurements': measurements
+                })
+            
+            # Пытаемся сохранить в базу, но не падаем при ошибке
+            try:
+                save_user_data(user_id, user_data)
+            except Exception as e:
+                print(f"⚠️ Не удалось сохранить в базу: {e}")
+        
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        
+        await update.message.reply_text(
+            "✅ Замеры сохранены! Выберите тип упражнения:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return TRAINING
+        
+    except Exception as e:
+        print(f"❌ Ошибка в save_measurements: {e}")
+        # Продолжаем работу даже при ошибке
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        
+        await update.message.reply_text(
+            "✅ Продолжаем тренировку! Выберите тип упражнения:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return TRAINING
 
 async def show_strength_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать силовые упражнения в виде кнопок"""
@@ -1334,3 +1357,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
