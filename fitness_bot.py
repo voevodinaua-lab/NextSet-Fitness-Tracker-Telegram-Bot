@@ -1337,7 +1337,19 @@ def main():
     application.add_error_handler(error_handler)
     
     print("🚀 Бот запускается...")
-    
+    # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА (добавьте перед application.run_polling())
+async def test_start(update: Update, context):
+    await update.message.reply_text("🎉 Тест! Бот работает!")
+
+async def test_help(update: Update, context):
+    await update.message.reply_text("ℹ️ Тестовая помощь")
+
+# ДОБАВЬТЕ ПРОСТЫЕ ОБРАБОТЧИКИ
+application.add_handler(CommandHandler("test", test_start))
+application.add_handler(CommandHandler("help", test_help))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, test_start))
+
+print("✅ Добавлены тестовые команды: /test, /help")
     # Запускаем polling
     application.run_polling(
         drop_pending_updates=True,
@@ -1345,4 +1357,5 @@ def main():
     )
 
 if __name__ == '__main__':
+
     main()
