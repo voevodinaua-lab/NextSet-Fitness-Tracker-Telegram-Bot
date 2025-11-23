@@ -1351,11 +1351,12 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, test_sta
 
 print("✅ Добавлены тестовые команды: /test, /help")
     # Запускаем polling
-    application.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
+application.run_polling(
+    drop_pending_updates=True,
+    allowed_updates=Update.ALL_TYPES
     )
 
 if __name__ == '__main__':
 
     main()
+
