@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
     INPUT_COMMENT, STATS_PERIOD, EXPORT_MENU, EXPORT_PERIOD,
     EXERCISES_MANAGEMENT, DELETE_EXERCISE, CHOOSE_EXERCISE_TYPE,
     CARDIO_TYPE_SELECTION, INPUT_CARDIO_DETAILS, CONFIRM_FINISH,
-    EDIT_TRAINING, EDIT_EXERCISE
-) = range(19)
+    EDIT_TRAINING, EDIT_EXERCISE, INPUT_MEASUREMENTS_CHOICE
+) = range(20)
 
 # База упражнений по умолчанию
 DEFAULT_STRENGTH_EXERCISES = [
@@ -465,14 +465,47 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Сохраняем данные
     save_user_data(user_id, user_data)
     
+    keyboard = [
+        ['📝 Ввести замеры', '⏭️ Отказаться'],
+        ['🔙 Главное меню']
+    ]
+    
     await update.message.reply_text(
         f"🎯 Отлично стартуем! Сегодня {current_date}\n\n"
-        "📏 Перед началом тренировки введите ваши замеры:\n"
-        "(например: вес 65кг, талия 70см, бедра 95см)\n"
-        "Или напишите 'пропустить' чтобы продолжить без замеров",
-        reply_markup=ReplyKeyboardRemove()
+        "📏 Хотите ли ввести замеры перед тренировкой?\n"
+        "(например: вес 65кг, талия 70см, бедра 95см)",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
-    return INPUT_MEASUREMENTS
+    return INPUT_MEASUREMENTS_CHOICE
+
+async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка выбора ввода замеров"""
+    choice = update.message.text
+    
+    if choice == '🔙 Главное меню':
+        return await start(update, context)
+    
+    elif choice == '⏭️ Отказаться':
+        # Пропускаем ввод замеров, переходим к тренировке
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        
+        await update.message.reply_text(
+            "✅ Начинаем тренировку! Выберите тип упражнения:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return TRAINING
+    
+    elif choice == '📝 Ввести замеры':
+        await update.message.reply_text(
+            "Введите ваши замеры:\n"
+            "(например: вес 65кг, талия 70см, бедра 95см)\n"
+            "Или напишите 'пропустить' чтобы продолжить без замеров",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return INPUT_MEASUREMENTS
 
 async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Сохранение замеров и переход к тренировке"""
@@ -1151,6 +1184,8 @@ async def handle_edit_training(update: Update, context: ContextTypes.DEFAULT_TYP
         return await finish_training(update, context)
     
     elif choice == '📝 Добавить упражнение':
+        # Сохраняем контекст редактирования и переходим к выбору типа упражнения
+        context.user_data['editing_mode'] = True
         keyboard = [
             ['💪 Силовые упражнения', '🏃 Кардио'],
             ['✏️ Добавить свое упражнение', '🔙 Назад к редактированию']
@@ -1599,6 +1634,11 @@ def main():
             MAIN_MENU: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
             ],
+            INPUT_MEASUREMENTS_CHOICE: [
+                MessageHandler(filters.Regex('^📝 Ввести замеры$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^⏭️ Отказаться$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^🔙 Главное меню$'), handle_measurements_choice),
+            ],
             INPUT_MEASUREMENTS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
             ],
@@ -1646,7 +1686,9 @@ def main():
                 MessageHandler(filters.Regex('^🔙 Главное меню$'), start),
             ],
             CHOOSE_EXERCISE_TYPE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise),
+                MessageHandler(filters.Regex('^💪 Силовое упражнение$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^🏃 Кардио упражнение$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^🔙 Назад к управлению упражнениями$'), add_custom_exercise),
             ],
             DELETE_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise),
