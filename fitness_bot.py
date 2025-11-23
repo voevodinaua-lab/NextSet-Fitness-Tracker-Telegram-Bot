@@ -1327,7 +1327,6 @@ else:
     
     if not TOKEN:
         print("❌ Ошибка: BOT_TOKEN не установлен")
-        return
      
     # Инициализируем базу данных
     if not init_database():
@@ -1444,6 +1443,7 @@ else:
 
 if __name__ == '__main__':
     main()
+
 
 
 
