@@ -39,30 +39,34 @@ DEFAULT_STRENGTH_EXERCISES = [
 
 DEFAULT_CARDIO_EXERCISES = ["Бег на дорожке"]
 
-# PostgreSQL функции с pg8000
-def get_db_connection():
-    """Получить соединение с PostgreSQL - ДЕТАЛЬНАЯ ДИАГНОСТИКА"""
+# 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА ПОДКЛЮЧЕНИЯ К БАЗЕ
+def debug_database_connection():
+    """Детальная диагностика подключения к базе"""
+    print("=== 🔍 ДЕТАЛЬНАЯ ДИАГНОСТИКА БАЗЫ ДАННЫХ ===")
+    
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        print("❌ DATABASE_URL не найден в переменных окружения")
+        return False
+    
+    # Скрываем пароль в логах для безопасности
+    safe_url = database_url.split('@')[0] + '@***'
+    print(f"📋 DATABASE_URL: {safe_url}")
+    
     try:
-        database_url = os.getenv('DATABASE_URL')
-        print(f"🔍 DATABASE_URL: {database_url}")
-        
-        if not database_url:
-            print("❌ DATABASE_URL не установлен")
-            return None
-        
-        # Парсим DATABASE_URL
         from urllib.parse import urlparse
+        import pg8000
+        
         url = urlparse(database_url)
         
-        print(f"🔍 Подключаемся к:")
+        print("🔧 Параметры подключения:")
         print(f"   Хост: {url.hostname}")
         print(f"   Порт: {url.port}")
         print(f"   База: {url.path[1:]}")
         print(f"   Пользователь: {url.username}")
-        print(f"   Пароль: {'*' * len(url.password) if url.password else 'нет'}")
         
-        # Пробуем подключиться с таймаутом
-        import pg8000
+        # Тест подключения
+        print("🔧 Тестируем подключение...")
         conn = pg8000.connect(
             host=url.hostname,
             port=url.port or 5432,
@@ -70,25 +74,80 @@ def get_db_connection():
             password=url.password,
             database=url.path[1:],
             ssl_context=True,
-            timeout=10  # 10 секунд таймаут
+            timeout=10
         )
         
-        print("🎉 ПОДКЛЮЧЕНИЕ К БАЗЕ УСПЕШНО!")
-        return conn
+        print("🎉 ✅ ПОДКЛЮЧЕНИЕ УСПЕШНО!")
+        
+        # Проверяем таблицу
+        print("🔧 Проверяем доступ к таблице users...")
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM users")
+        result = cursor.fetchone()
+        print(f"🎉 ✅ Таблица users доступна, записей: {result[0]}")
+        
+        conn.close()
+        return True
         
     except Exception as e:
-        print(f"💥 КРИТИЧЕСКАЯ ОШИБКА ПОДКЛЮЧЕНИЯ: {e}")
+        print(f"💥 ОШИБКА ПОДКЛЮЧЕНИЯ: {e}")
         print("🔧 Возможные причины:")
-        print("   - Неправильный пароль")
-        print("   - Хост недоступен")
-        print("   - Блокировка firewall")
-        print("   - Проблемы с SSL")
+        print("   1. Неправильный пароль")
+        print("   2. Хост заблокирован firewall")
+        print("   3. Проблемы с SSL сертификатом")
+        print("   4. База данных не существует")
+        return False
+
+# 📋 ОСНОВНЫЕ ФУНКЦИИ БАЗЫ ДАННЫХ
+def get_db_connection():
+    """Получить соединение с PostgreSQL"""
+    try:
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            logger.error("❌ DATABASE_URL не установлен")
+            return None
+        
+        # Парсим DATABASE_URL
+        from urllib.parse import urlparse
+        url = urlparse(database_url)
+        
+        conn = pg8000.connect(
+            host=url.hostname,
+            port=url.port or 5432,
+            user=url.username,
+            password=url.password,
+            database=url.path[1:],  # Убираем первый слэш
+            ssl_context=True  # Важно для Supabase!
+        )
+        return conn
+    except Exception as e:
+        logger.error(f"❌ Ошибка подключения к PostgreSQL: {e}")
         return None
 
 def init_database():
     """Инициализация базы данных"""
     conn = get_db_connection()
     if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            # Таблица пользователей
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id BIGINT PRIMARY KEY,
+                    user_data JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+        
+        conn.commit()
+        conn.close()
+        print("✅ База данных инициализирована")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Ошибка инициализации БД: {e}")
         return False
     
     try:
@@ -1385,6 +1444,7 @@ else:
 
 if __name__ == '__main__':
     main()
+
 
 
 
