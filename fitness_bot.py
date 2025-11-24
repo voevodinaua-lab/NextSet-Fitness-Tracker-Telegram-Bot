@@ -422,7 +422,56 @@ def update_statistics(user_id, training):
     # Сохраняем обновленные данные
     save_user_data(user_id, user_data)
 
-# Асинхронные функции бота
+async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка любых сообщений, когда бот не в активном состоянии"""
+    user = update.message.from_user
+    user_id = user.id
+    
+    # Проверяем, есть ли данные пользователя в базе
+    user_data = load_user_data(user_id)
+    
+    # Проверяем, есть ли у пользователя сохраненные тренировки
+    has_history = user_data and (user_data.get('trainings') or user_data.get('measurements_history') or 
+                                user_data.get('custom_exercises', {}).get('strength') or 
+                                user_data.get('custom_exercises', {}).get('cardio'))
+    
+    if has_history:
+        # Пользователь уже имеет историю - предлагаем продолжить
+        welcome_text = f"""
+👋 С возвращением, {user.first_name}! 
+
+Ваша история тренировок и все данные сохранены в базе данных и доступны для просмотра и выгрузки.
+
+Нажмите кнопку «🚀 Продолжить», чтобы вернуться к работе с вашими данными.
+        """
+        
+        keyboard = [['🚀 Продолжить']]
+        
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        )
+    else:
+        # Новый пользователь
+        welcome_text = f"""
+👋 Привет, {user.first_name}! 
+
+Я твой фитнес-трекер! Помогу тебе отслеживать тренировки, замеры и прогресс.
+
+Нажми кнопку «🚀 Начать», чтобы начать работу!
+        """
+        
+        keyboard = [['🚀 Начать']]
+        
+        await update.message.reply_text(
+            welcome_text,
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        )
+
+async def start_from_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка нажатия кнопки старта"""
+    return await start(update, context)
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало работы с ботом"""
     user = update.message.from_user
@@ -430,11 +479,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # Инициализируем данные пользователя при первом старте
     user_data = load_user_data(user.id)
     
-    welcome_text = f"""
+    # Проверяем, есть ли у пользователя история
+    has_history = user_data and (user_data.get('trainings') or user_data.get('measurements_history') or 
+                                user_data.get('custom_exercises', {}).get('strength') or 
+                                user_data.get('custom_exercises', {}).get('cardio'))
+    
+    if has_history:
+        welcome_text = f"""
+🎉 Добро пожаловать назад, {user.first_name}! 
+
+Все ваши данные сохранены:
+• Тренировок: {len(user_data.get('trainings', []))}
+• Замеров: {len(user_data.get('measurements_history', []))}
+• Своих упражнений: {len(user_data.get('custom_exercises', {}).get('strength', [])) + len(user_data.get('custom_exercises', {}).get('cardio', []))}
+
+Продолжаем работу! 🏋️
+        """
+    else:
+        welcome_text = f"""
 Привет, {user.first_name}! 🏋️
 
 Я твой фитнес-трекер! Выбери действие:
-    """
+        """
     
     keyboard = [
         ['💪 Начать тренировку', '📊 История тренировок'],
@@ -447,6 +513,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
     return MAIN_MENU
+
 
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало тренировки"""
@@ -1519,35 +1586,35 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def show_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Меню выгрузки данных"""
+    user_id = update.message.from_user.id
+    user_data = get_user_data(user_id)
+    
+    # Добавляем информацию о сохраненных данных
+    stats_text = ""
+    if user_data.get('trainings'):
+        stats_text = f"\n💾 Ваши данные сохранены в базе:\n• Тренировок: {len(user_data['trainings'])}\n• Упражнений записано: {user_data['statistics'].get('total_exercises', 0)}"
+    
     keyboard = [
         ['📅 Текущий месяц', '📅 Все время'],
         ['🔙 Главное меню']
     ]
     
     await update.message.reply_text(
-        "📤 Выберите период для выгрузки данных:\n\n"
+        f"📤 Выберите период для выгрузки данных:{stats_text}\n\n"
         "Данные будут выгружены в CSV файл, который можно скачать",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
     return EXPORT_MENU
 
-async def export_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Выгрузка данных в CSV файл"""
+async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Показать историю тренировок"""
     user_id = update.message.from_user.id
-    period_type = update.message.text
+    user_data = get_user_data(user_id)
     
-    if period_type == '📅 Текущий месяц':
-        export_type = "current_month"
-        period_name = "текущий месяц"
-    else:
-        export_type = "all_time"
-        period_name = "все время"
-    
-    csv_data = generate_csv_export(user_id, export_type)
-    
-    if not csv_data:
+    if not user_data['trainings']:
+        info_text = "💾 Все ваши будущие тренировки будут автоматически сохраняться в базе данных."
         await update.message.reply_text(
-            f"❌ Нет данных для выгрузки за {period_name}.",
+            f"📝 У вас пока нет завершенных тренировок.\n\n{info_text}",
             reply_markup=ReplyKeyboardMarkup([
                 ['💪 Начать тренировку', '📊 История тренировок'],
                 ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
@@ -1556,52 +1623,31 @@ async def export_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         )
         return MAIN_MENU
     
-    # Сохраняем CSV во временный файл
-    filename = f"training_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    history_text = "📊 Последние тренировки:\n\n"
     
-    with open(filename, 'w', encoding='utf-8') as f:
-        f.write(csv_data)
+    total_trainings = len(user_data['trainings'])
+    start_index = max(0, total_trainings - 5)
     
-    # Отправляем файл
-    with open(filename, 'rb') as f:
-        await update.message.reply_document(
-            document=f,
-            filename=filename,
-            caption=f"📊 Выгрузка данных за {period_name}\n\n"
-                   "Файл содержит все ваши тренировки в формате CSV",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💪 Начать тренировку', '📊 История тренировок'],
-                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
-                ['📤 Выгрузка данных', '❓ Помощь']
-            ], resize_keyboard=True)
-        )
+    for i, training in enumerate(user_data['trainings'][start_index:], start_index + 1):
+        history_text += f"🏋️ Тренировка #{i}\n"
+        history_text += f"📅 {training['date_start']}\n"
+        
+        strength_count = sum(1 for ex in training['exercises'] if not ex.get('is_cardio'))
+        cardio_count = sum(1 for ex in training['exercises'] if ex.get('is_cardio'))
+        
+        history_text += f"Упражнений: {len(training['exercises'])} (💪{strength_count} 🏃{cardio_count})\n"
+        
+        if training['comment'] and training['comment'] != 'пропустить':
+            history_text += f"💬 {training['comment']}\n"
+        
+        history_text += "------\n"
     
-    # Удаляем временный файл
-    os.remove(filename)
+    # Добавляем информацию о сохранении данных
+    history_text += f"\n💾 Всего тренировок сохранено: {total_trainings}\n"
+    history_text += "Данные хранятся в базе и доступны для выгрузки."
     
+    await update.message.reply_text(history_text)
     return MAIN_MENU
-
-async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обработка главного меню"""
-    text = update.message.text
-    
-    if text == '💪 Начать тренировку':
-        return await start_training(update, context)
-    elif text == '📊 История тренировок':
-        return await show_training_history(update, context)
-    elif text == '📝 Мои упражнения':
-        return await show_exercises_management(update, context)
-    elif text == '📈 Статистика':
-        return await show_statistics_menu(update, context)
-    elif text == '📏 Мои замеры':
-        return await show_measurements_history(update, context)
-    elif text == '📤 Выгрузка данных':
-        return await show_export_menu(update, context)
-    elif text == '❓ Помощь':
-        return await help_command(update, context)
-    else:
-        await update.message.reply_text("Пожалуйста, используйте кнопки меню")
-        return MAIN_MENU
 
 def main():
     print("🚀 ЗАПУСК БОТА...")
@@ -1641,7 +1687,10 @@ def main():
     
     # Добавляем обработчики
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[
+            CommandHandler('start', start),
+            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button)
+        ],
         states={
             MAIN_MENU: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
@@ -1727,11 +1776,18 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_deletion),
             ],
         },
-        fallbacks=[CommandHandler('start', start)]
+        fallbacks=[
+            CommandHandler('start', start),
+            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button)
+        ]
     )
     
     application.add_handler(conv_handler)
     
+    # ОБРАБОТЧИК ДЛЯ ЛЮБЫХ СООБЩЕНИЙ ВНЕ КОНВЕРСАЦИИ
+    # Этот обработчик будет ловить все сообщения, когда бот не в активном состоянии
+    application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_unknown_message), group=1)
+
     # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА
     async def test_cmd(update: Update, context):
         status = "с базой данных" if DB_AVAILABLE else "в режиме памяти (база недоступна)"
