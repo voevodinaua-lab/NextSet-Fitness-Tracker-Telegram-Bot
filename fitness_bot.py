@@ -514,7 +514,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return MAIN_MENU
 
-
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало тренировки"""
     user_id = update.message.from_user.id
@@ -532,8 +531,11 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Сохраняем данные
     save_user_data(user_id, user_data)
     
+    # Устанавливаем флаг, что мы в режиме тренировки
+    context.user_data['in_training'] = True
+    
     keyboard = [
-        ['📝 Ввести замеры', '⏭️ Отказаться'],
+        ['📝 Ввести замеры', '⏭️ Пропустить замеры'],
         ['🔙 Главное меню']
     ]
     
@@ -550,9 +552,11 @@ async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAU
     choice = update.message.text
     
     if choice == '🔙 Главное меню':
+        # Очищаем флаг тренировки при выходе в главное меню
+        context.user_data.pop('in_training', None)
         return await start(update, context)
     
-    elif choice == '⏭️ Отказаться':
+    elif choice == '⏭️ Пропустить замеры':
         # Пропускаем ввод замеров, переходим к тренировке
         keyboard = [
             ['💪 Силовые упражнения', '🏃 Кардио'],
@@ -573,6 +577,17 @@ async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAU
             reply_markup=ReplyKeyboardRemove()
         )
         return INPUT_MEASUREMENTS
+    
+    else:
+        # Обработка текстового ввода вместо кнопок
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup([
+                ['📝 Ввести замеры', '⏭️ Пропустить замеры'],
+                ['🔙 Главное меню']
+            ], resize_keyboard=True)
+        )
+        return INPUT_MEASUREMENTS_CHOICE
 
 async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Сохранение замеров и переход к тренировке"""
@@ -868,10 +883,17 @@ async def show_exercises_management(update: Update, context: ContextTypes.DEFAUL
 
 async def choose_exercise_type(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор типа упражнения для добавления"""
+    # Проверяем, вызывается ли из тренировки
+    in_training = context.user_data.get('in_training', False)
+    
     keyboard = [
         ['💪 Силовое упражнение', '🏃 Кардио упражнение'],
-        ['🔙 Назад к управлению упражнениями']
     ]
+    
+    if in_training:
+        keyboard.append(['🔙 Назад к тренировке'])
+    else:
+        keyboard.append(['🔙 Назад к управлению упражнениями'])
     
     await update.message.reply_text(
         "Выберите тип упражнения для добавления:",
@@ -881,23 +903,51 @@ async def choose_exercise_type(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def add_custom_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Добавление пользовательского упражнения"""
-    exercise_type = update.message.text
+    choice = update.message.text
     
-    if exercise_type == '🔙 Назад к управлению упражнениями':
+    # Проверяем, вызывается ли из тренировки
+    in_training = context.user_data.get('in_training', False)
+    
+    if choice == '🔙 Назад к тренировке' and in_training:
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        await update.message.reply_text(
+            "Выберите тип упражнения:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return TRAINING
+    elif choice == '🔙 Назад к управлению упражнениями' and not in_training:
         return await show_exercises_management(update, context)
     
-    if '💪 Силовое' in exercise_type:
+    if '💪 Силовое' in choice:
         context.user_data['adding_exercise_type'] = 'strength'
         await update.message.reply_text(
             "Введите название нового силового упражнения:",
             reply_markup=ReplyKeyboardRemove()
         )
-    elif '🏃 Кардио' in exercise_type:
+    elif '🏃 Кардио' in choice:
         context.user_data['adding_exercise_type'] = 'cardio'
         await update.message.reply_text(
             "Введите название нового кардио упражнения:",
             reply_markup=ReplyKeyboardRemove()
         )
+    else:
+        # Обработка текстового ввода вместо кнопок
+        keyboard = [
+            ['💪 Силовое упражнение', '🏃 Кардио упражнение'],
+        ]
+        if in_training:
+            keyboard.append(['🔙 Назад к тренировке'])
+        else:
+            keyboard.append(['🔙 Назад к управлению упражнениями'])
+            
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора типа упражнения",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return CHOOSE_EXERCISE_TYPE
     
     return ADD_CUSTOM_EXERCISE
 
@@ -919,7 +969,18 @@ async def save_custom_exercise(update: Update, context: ContextTypes.DEFAULT_TYP
     # Очищаем временные данные
     context.user_data.pop('adding_exercise_type', None)
     
-    return await show_exercises_management(update, context)
+    # Проверяем контекст и возвращаемся в соответствующее меню
+    in_training = context.user_data.get('in_training', False)
+    
+    if in_training:
+        # Возвращаемся к выбору упражнений в тренировке
+        if exercise_type == 'strength':
+            return await show_strength_exercises(update, context)
+        else:
+            return await handle_cardio(update, context)
+    else:
+        # Возвращаемся к управлению упражнениями
+        return await show_exercises_management(update, context)
 
 async def show_delete_exercise_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать меню удаления упражнений"""
@@ -1034,21 +1095,32 @@ async def handle_cardio_selection(update: Update, context: ContextTypes.DEFAULT_
 
 async def handle_cardio_type_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка выбора формата кардио"""
-    cardio_type = update.message.text
+    choice = update.message.text
     
-    if cardio_type == '🔙 Назад к кардио':
+    if choice == '🔙 Назад к кардио':
         return await handle_cardio(update, context)
     
-    context.user_data['cardio_type'] = cardio_type
+    if choice not in ['⏱️ Мин/Метры', '🚀 Км/Час']:
+        # Обработка текстового ввода вместо кнопок
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора формата",
+            reply_markup=ReplyKeyboardMarkup([
+                ['⏱️ Мин/Метры', '🚀 Км/Час'],
+                ['🔙 Назад к кардио']
+            ], resize_keyboard=True)
+        )
+        return CARDIO_TYPE_SELECTION
     
-    if cardio_type == '⏱️ Мин/Метры':
+    context.user_data['cardio_type'] = choice
+    
+    if choice == '⏱️ Мин/Метры':
         await update.message.reply_text(
             "Введите время и дистанцию в формате:\n"
             "**Время_в_минутах Дистанция_в_метрах**\n\n"
             "📝 Пример: 30 5000 (30 минут, 5000 метров)",
             reply_markup=ReplyKeyboardRemove()
         )
-    elif cardio_type == '🚀 Км/Час':
+    elif choice == '🚀 Км/Час':
         await update.message.reply_text(
             "Введите время и скорость в формате:\n"
             "**Время_в_минутах Скорость_км/ч**\n\n"
@@ -1148,8 +1220,15 @@ async def add_custom_cardio(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     await update.message.reply_text(f"✅ Кардио упражнение '{exercise_name}' добавлено!")
     
-    # Возвращаемся к выбору кардио упражнений
-    return await handle_cardio(update, context)
+    # Проверяем контекст и возвращаемся в соответствующее меню
+    in_training = context.user_data.get('in_training', False)
+    
+    if in_training:
+        # Возвращаемся к выбору кардио упражнений в тренировке
+        return await handle_cardio(update, context)
+    else:
+        # Возвращаемся к управлению упражнениями
+        return await show_exercises_management(update, context)
 
 async def cancel_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Отмена текущего упражнения"""
@@ -1254,6 +1333,17 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
     
     elif choice == '✅ Точно завершить':
         return await save_comment(update, context)
+    
+    else:
+        # Обработка текстового ввода вместо кнопок
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup([
+                ['✅ Точно завершить', '✏️ Скорректировать'],
+                ['🔙 Продолжить тренировку']
+            ], resize_keyboard=True)
+        )
+        return CONFIRM_FINISH
 
 async def handle_edit_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка редактирования тренировки"""
@@ -1298,6 +1388,17 @@ async def handle_edit_training(update: Update, context: ContextTypes.DEFAULT_TYP
         
         context.user_data['editing'] = True
         return EDIT_EXERCISE
+    
+    else:
+        # Обработка текстового ввода вместо кнопок
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup([
+                ['📝 Добавить упражнение', '🗑️ Удалить упражнение'],
+                ['🔙 Назад к сводке']
+            ], resize_keyboard=True)
+        )
+        return EDIT_TRAINING
 
 async def handle_exercise_deletion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка удаления упражнения из тренировки"""
@@ -1381,6 +1482,9 @@ async def save_comment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     
     # Очищаем текущую тренировку
     user_data['current_training'] = None
+    
+    # Очищаем флаг тренировки
+    context.user_data.pop('in_training', None)
     
     # Сохраняем финальные данные
     save_user_data(user_id, user_data)
@@ -1532,7 +1636,15 @@ async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TY
     user_data = get_user_data(user_id)
     
     if not user_data['trainings']:
-        await update.message.reply_text("📝 У вас пока нет завершенных тренировок.")
+        info_text = "💾 Все ваши будущие тренировки будут автоматически сохраняться в базе данных."
+        await update.message.reply_text(
+            f"📝 У вас пока нет завершенных тренировок.\n\n{info_text}",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Начать тренировку', '📊 История тренировок'],
+                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                ['📤 Выгрузка данных', '❓ Помощь']
+            ], resize_keyboard=True)
+        )
         return MAIN_MENU
     
     history_text = "📊 Последние тренировки:\n\n"
@@ -1553,6 +1665,10 @@ async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TY
             history_text += f"💬 {training['comment']}\n"
         
         history_text += "------\n"
+    
+    # Добавляем информацию о сохранении данных
+    history_text += f"\n💾 Всего тренировок сохранено: {total_trainings}\n"
+    history_text += "Данные хранятся в базе и доступны для выгрузки."
     
     await update.message.reply_text(history_text)
     return MAIN_MENU
@@ -1606,15 +1722,23 @@ async def show_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     )
     return EXPORT_MENU
 
-async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Показать историю тренировок"""
+async def export_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Выгрузка данных в CSV файл"""
     user_id = update.message.from_user.id
-    user_data = get_user_data(user_id)
+    period_type = update.message.text
     
-    if not user_data['trainings']:
-        info_text = "💾 Все ваши будущие тренировки будут автоматически сохраняться в базе данных."
+    if period_type == '📅 Текущий месяц':
+        export_type = "current_month"
+        period_name = "текущий месяц"
+    else:
+        export_type = "all_time"
+        period_name = "все время"
+    
+    csv_data = generate_csv_export(user_id, export_type)
+    
+    if not csv_data:
         await update.message.reply_text(
-            f"📝 У вас пока нет завершенных тренировок.\n\n{info_text}",
+            f"❌ Нет данных для выгрузки за {period_name}.",
             reply_markup=ReplyKeyboardMarkup([
                 ['💪 Начать тренировку', '📊 История тренировок'],
                 ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
@@ -1623,31 +1747,54 @@ async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return MAIN_MENU
     
-    history_text = "📊 Последние тренировки:\n\n"
+    # Сохраняем CSV во временный файл
+    filename = f"training_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     
-    total_trainings = len(user_data['trainings'])
-    start_index = max(0, total_trainings - 5)
+    with open(filename, 'w', encoding='utf-8') as f:
+        f.write(csv_data)
     
-    for i, training in enumerate(user_data['trainings'][start_index:], start_index + 1):
-        history_text += f"🏋️ Тренировка #{i}\n"
-        history_text += f"📅 {training['date_start']}\n"
-        
-        strength_count = sum(1 for ex in training['exercises'] if not ex.get('is_cardio'))
-        cardio_count = sum(1 for ex in training['exercises'] if ex.get('is_cardio'))
-        
-        history_text += f"Упражнений: {len(training['exercises'])} (💪{strength_count} 🏃{cardio_count})\n"
-        
-        if training['comment'] and training['comment'] != 'пропустить':
-            history_text += f"💬 {training['comment']}\n"
-        
-        history_text += "------\n"
+    # Отправляем файл
+    with open(filename, 'rb') as f:
+        await update.message.reply_document(
+            document=f,
+            filename=filename,
+            caption=f"📊 Выгрузка данных за {period_name}\n\n"
+                   "Файл содержит все ваши тренировки в формате CSV",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Начать тренировку', '📊 История тренировок'],
+                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                ['📤 Выгрузка данных', '❓ Помощь']
+            ], resize_keyboard=True)
+        )
     
-    # Добавляем информацию о сохранении данных
-    history_text += f"\n💾 Всего тренировок сохранено: {total_trainings}\n"
-    history_text += "Данные хранятся в базе и доступны для выгрузки."
+    # Удаляем временный файл
+    os.remove(filename)
     
-    await update.message.reply_text(history_text)
     return MAIN_MENU
+
+async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка главного меню"""
+    text = update.message.text
+    
+    if text == '💪 Начать тренировку':
+        return await start_training(update, context)
+    elif text == '📊 История тренировок':
+        return await show_training_history(update, context)
+    elif text == '📝 Мои упражнения':
+        # Очищаем флаг тренировки при переходе в управление упражнениями
+        context.user_data.pop('in_training', None)
+        return await show_exercises_management(update, context)
+    elif text == '📈 Статистика':
+        return await show_statistics_menu(update, context)
+    elif text == '📏 Мои замеры':
+        return await show_measurements_history(update, context)
+    elif text == '📤 Выгрузка данных':
+        return await show_export_menu(update, context)
+    elif text == '❓ Помощь':
+        return await help_command(update, context)
+    else:
+        await update.message.reply_text("Пожалуйста, используйте кнопки меню")
+        return MAIN_MENU
 
 def main():
     print("🚀 ЗАПУСК БОТА...")
@@ -1696,27 +1843,29 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
             ],
             INPUT_MEASUREMENTS_CHOICE: [
-                MessageHandler(filters.Regex('^(📝 Ввести замеры)$'), handle_measurements_choice),
-                MessageHandler(filters.Regex('^(⏭️ Отказаться)$'), handle_measurements_choice),
-                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),  # Обработка текста
             ],
             INPUT_MEASUREMENTS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
             ],
             TRAINING: [
-                MessageHandler(filters.Regex('^(💪 Силовые упражнения)$'), show_strength_exercises),
-                MessageHandler(filters.Regex('^(🏃 Кардио)$'), handle_cardio),
-                MessageHandler(filters.Regex('^(✏️ Добавить свое упражнение)$'), choose_exercise_type),
-                MessageHandler(filters.Regex('^(🏁 Завершить тренировку)$'), finish_training),
+                MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), 
+                              lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
+                                           handle_cardio(u, c) if u.message.text == '🏃 Кардио' else
+                                           choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
+                                           finish_training(u, c))),
             ],
             CHOOSE_EXERCISE: [
-                MessageHandler(filters.Regex('^(🔙 Назад к тренировке)$'), save_measurements),
+                MessageHandler(filters.Regex('^(🔙 Назад к тренировке)$'), 
+                              lambda u, c: (save_measurements(u, c))),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_selection),
             ],
             INPUT_SETS: [
-                MessageHandler(filters.Regex('^(✅ Добавить еще подходы)$'), add_another_set),
-                MessageHandler(filters.Regex('^(💾 Сохранить упражнение)$'), save_exercise),
-                MessageHandler(filters.Regex('^(❌ Отменить упражнение)$'), cancel_exercise),
+                MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), 
+                              lambda u, c: (add_another_set(u, c) if u.message.text == '✅ Добавить еще подходы' else
+                                           save_exercise(u, c) if u.message.text == '💾 Сохранить упражнение' else
+                                           cancel_exercise(u, c))),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
             ],
             ADD_CUSTOM_EXERCISE: [
@@ -1729,48 +1878,43 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_comment),
             ],
             STATS_PERIOD: [
-                MessageHandler(filters.Regex('^(📊 Общая статистика)$'), show_general_statistics),
-                MessageHandler(filters.Regex('^(📅 Текущая неделя)$'), show_general_statistics),
-                MessageHandler(filters.Regex('^(📅 Текущий месяц)$'), show_general_statistics),
-                MessageHandler(filters.Regex('^(📅 Текущий год)$'), show_general_statistics),
-                MessageHandler(filters.Regex('^(📋 Детальная статистика)$'), show_detailed_statistics),
-                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
+                MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Детальная статистика|🔙 Главное меню)$'), 
+                              lambda u, c: (show_general_statistics(u, c) if u.message.text in ['📊 Общая статистика', '📅 Текущая неделя', '📅 Текущий месяц', '📅 Текущий год'] else
+                                           show_detailed_statistics(u, c) if u.message.text == '📋 Детальная статистика' else
+                                           start(u, c))),
             ],
             EXPORT_MENU: [
-                MessageHandler(filters.Regex('^(📅 Текущий месяц)$'), export_data),
-                MessageHandler(filters.Regex('^(📅 Все время)$'), export_data),
-                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
+                MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), 
+                              lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
+                                           start(u, c))),
             ],
             EXERCISES_MANAGEMENT: [
-                MessageHandler(filters.Regex('^(➕ Добавить упражнение)$'), choose_exercise_type),
-                MessageHandler(filters.Regex('^(🗑️ Удалить упражнение)$'), show_delete_exercise_menu),
-                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
+                MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), 
+                              lambda u, c: (choose_exercise_type(u, c) if u.message.text == '➕ Добавить упражнение' else
+                                           show_delete_exercise_menu(u, c) if u.message.text == '🗑️ Удалить упражнение' else
+                                           start(u, c))),
             ],
             CHOOSE_EXERCISE_TYPE: [
-                MessageHandler(filters.Regex('^(💪 Силовое упражнение)$'), add_custom_exercise),
-                MessageHandler(filters.Regex('^(🏃 Кардио упражнение)$'), add_custom_exercise),
-                MessageHandler(filters.Regex('^(🔙 Назад к управлению упражнениями)$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке|🔙 Назад к управлению упражнениями)$'), add_custom_exercise),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise),  # Обработка текста
             ],
             DELETE_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise),
             ],
             CARDIO_TYPE_SELECTION: [
-                MessageHandler(filters.Regex('^(⏱️ Мин/Метры)$'), handle_cardio_type_selection),
-                MessageHandler(filters.Regex('^(🚀 Км/Час)$'), handle_cardio_type_selection),
-                MessageHandler(filters.Regex('^(🔙 Назад к кардио)$'), handle_cardio),
+                MessageHandler(filters.Regex('^(⏱️ Мин/Метры|🚀 Км/Час|🔙 Назад к кардио)$'), handle_cardio_type_selection),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_type_selection),  # Обработка текста
             ],
             INPUT_CARDIO_DETAILS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_details_input),
             ],
             CONFIRM_FINISH: [
-                MessageHandler(filters.Regex('^(✅ Точно завершить)$'), handle_finish_confirmation),
-                MessageHandler(filters.Regex('^(✏️ Скорректировать)$'), handle_finish_confirmation),
-                MessageHandler(filters.Regex('^(🔙 Продолжить тренировку)$'), handle_finish_confirmation),
+                MessageHandler(filters.Regex('^(✅ Точно завершить|✏️ Скорректировать|🔙 Продолжить тренировку)$'), handle_finish_confirmation),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),  # Обработка текста
             ],
             EDIT_TRAINING: [
-                MessageHandler(filters.Regex('^(📝 Добавить упражнение)$'), handle_edit_training),
-                MessageHandler(filters.Regex('^(🗑️ Удалить упражнение)$'), handle_edit_training),
-                MessageHandler(filters.Regex('^(🔙 Назад к сводке)$'), handle_edit_training),
+                MessageHandler(filters.Regex('^(📝 Добавить упражнение|🗑️ Удалить упражнение|🔙 Назад к сводке)$'), handle_edit_training),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_edit_training),  # Обработка текста
             ],
             EDIT_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_deletion),
