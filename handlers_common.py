@@ -2,7 +2,7 @@ import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from database import create_user, get_current_training, get_user_trainings
-from utils.constants import *
+from utils_constants import *
 
 logger = logging.getLogger(__name__)
 
@@ -244,4 +244,5 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return await help_command(update, context)
     else:
         await update.message.reply_text("Пожалуйста, используйте кнопки меню")
+
         return MAIN_MENU
