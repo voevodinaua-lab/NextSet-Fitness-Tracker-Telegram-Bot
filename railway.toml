@@ -1,7 +1,5 @@
-[deploy]
-  numReplicas = 1
+[build]
+builder = "nixpacks"
 
-[service]
-  numReplicas = 1
-  softConcurrency = 1
-  hardConcurrency = 1
+[deploy]
+startCommand = "python main.py"
