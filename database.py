@@ -20,13 +20,19 @@ def get_db_connection():
         
         url = urlparse(database_url)
         
+        # Создаем SSL контекст с отключенной проверкой сертификата
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
         conn = pg8000.connect(
             host=url.hostname,
             port=url.port or 5432,
             user=url.username,
             password=url.password,
             database=url.path[1:],
-            ssl_context=True,
+            ssl_context=ssl_context,  # Используем наш кастомный SSL контекст
             timeout=10
         )
         return conn
@@ -402,4 +408,5 @@ def get_measurements_history(user_id, limit=10):
         return measurements
     except Exception as e:
         logger.error(f"❌ Ошибка получения замеров {user_id}: {e}")
+
         return []
