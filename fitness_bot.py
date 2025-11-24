@@ -27,8 +27,9 @@ logger = logging.getLogger(__name__)
     INPUT_COMMENT, STATS_PERIOD, EXPORT_MENU, EXPORT_PERIOD,
     EXERCISES_MANAGEMENT, DELETE_EXERCISE, CHOOSE_EXERCISE_TYPE,
     CARDIO_TYPE_SELECTION, INPUT_CARDIO_DETAILS, CONFIRM_FINISH,
-    EDIT_TRAINING, EDIT_EXERCISE, INPUT_MEASUREMENTS_CHOICE
-) = range(20)
+    EDIT_TRAINING, EDIT_EXERCISE, INPUT_MEASUREMENTS_CHOICE,
+    CLEAR_DATA_CONFIRM
+) = range(21)
 
 # База упражнений по умолчанию
 DEFAULT_STRENGTH_EXERCISES = [
@@ -436,16 +437,22 @@ async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_T
                                 user_data.get('custom_exercises', {}).get('cardio'))
     
     if has_history:
-        # Пользователь уже имеет историю - предлагаем продолжить
+        # Пользователь уже имеет историю - предлагаем продолжить или начать заново
         welcome_text = f"""
 👋 С возвращением, {user.first_name}! 
 
-Ваша история тренировок и все данные сохранены в базе данных и доступны для просмотра и выгрузки.
+Ваша история тренировок и все данные сохранены в базе данных:
+• Тренировок: {len(user_data.get('trainings', []))}
+• Замеров: {len(user_data.get('measurements_history', []))}
+• Своих упражнений: {len(user_data.get('custom_exercises', {}).get('strength', [])) + len(user_data.get('custom_exercises', {}).get('cardio', []))}
 
-Нажмите кнопку «🚀 Продолжить», чтобы вернуться к работе с вашими данными.
+Выберите действие:
         """
         
-        keyboard = [['🚀 Продолжить']]
+        keyboard = [
+            ['🚀 Продолжить'],
+            ['🗑️ Начать с чистого листа']
+        ]
         
         await update.message.reply_text(
             welcome_text,
@@ -513,6 +520,100 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
     return MAIN_MENU
+
+async def handle_clear_data_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка выбора очистки данных"""
+    choice = update.message.text
+    
+    if choice == '🚀 Продолжить':
+        return await start(update, context)
+    
+    elif choice == '🗑️ Начать с чистого листа':
+        warning_text = """
+⚠️ ВНИМАНИЕ: Вы собираетесь удалить все ваши данные!
+
+Это действие:
+• Удалит все тренировки и замеры
+• Сбросит статистику
+• Сохранит только ваши упражнения
+• Нельзя будет отменить
+
+Подтвердите действие:
+        """
+        
+        keyboard = [
+            ['✅ Да, удалить все данные'],
+            ['❌ Отмена']
+        ]
+        
+        await update.message.reply_text(
+            warning_text,
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return CLEAR_DATA_CONFIRM
+    
+    else:
+        # Обработка текстового ввода вместо кнопок
+        user_id = update.message.from_user.id
+        user_data = load_user_data(user_id)
+        has_history = user_data and (user_data.get('trainings') or user_data.get('measurements_history'))
+        
+        if has_history:
+            keyboard = [
+                ['🚀 Продолжить'],
+                ['🗑️ Начать с чистого листа']
+            ]
+        else:
+            keyboard = [['🚀 Начать']]
+            
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+        )
+
+async def handle_clear_data_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка подтверждения очистки данных"""
+    choice = update.message.text
+    user_id = update.message.from_user.id
+    
+    if choice == '❌ Отмена':
+        return await start(update, context)
+    
+    elif choice == '✅ Да, удалить все данные':
+        # Сохраняем только пользовательские упражнения
+        user_data = load_user_data(user_id)
+        custom_exercises = user_data.get('custom_exercises', {
+            'strength': [],
+            'cardio': []
+        })
+        
+        # Создаем новые данные с сохранением только упражнений
+        new_user_data = get_default_user_data()
+        new_user_data['custom_exercises'] = custom_exercises
+        
+        # Сохраняем очищенные данные
+        save_user_data(user_id, new_user_data)
+        
+        await update.message.reply_text(
+            "✅ Все ваши данные были успешно удалены! Сохранены только ваши упражнения.",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Начать тренировку', '📊 История тренировок'],
+                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                ['📤 Выгрузка данных', '❓ Помощь']
+            ], resize_keyboard=True)
+        )
+        return MAIN_MENU
+    
+    else:
+        # Обработка текстового ввода вместо кнопок
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для подтверждения",
+            reply_markup=ReplyKeyboardMarkup([
+                ['✅ Да, удалить все данные'],
+                ['❌ Отмена']
+            ], resize_keyboard=True)
+        )
+        return CLEAR_DATA_CONFIRM
 
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало тренировки"""
@@ -1844,7 +1945,7 @@ def main():
             ],
             INPUT_MEASUREMENTS_CHOICE: [
                 MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),  # Обработка текста
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
             ],
             INPUT_MEASUREMENTS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
@@ -1896,33 +1997,38 @@ def main():
             ],
             CHOOSE_EXERCISE_TYPE: [
                 MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке|🔙 Назад к управлению упражнениями)$'), add_custom_exercise),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise),  # Обработка текста
+                MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise),
             ],
             DELETE_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise),
             ],
             CARDIO_TYPE_SELECTION: [
                 MessageHandler(filters.Regex('^(⏱️ Мин/Метры|🚀 Км/Час|🔙 Назад к кардио)$'), handle_cardio_type_selection),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_type_selection),  # Обработка текста
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_type_selection),
             ],
             INPUT_CARDIO_DETAILS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_details_input),
             ],
             CONFIRM_FINISH: [
                 MessageHandler(filters.Regex('^(✅ Точно завершить|✏️ Скорректировать|🔙 Продолжить тренировку)$'), handle_finish_confirmation),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),  # Обработка текста
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
             ],
             EDIT_TRAINING: [
                 MessageHandler(filters.Regex('^(📝 Добавить упражнение|🗑️ Удалить упражнение|🔙 Назад к сводке)$'), handle_edit_training),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_edit_training),  # Обработка текста
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_edit_training),
             ],
             EDIT_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_deletion),
             ],
+            CLEAR_DATA_CONFIRM: [
+                MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+            ],
         },
         fallbacks=[
             CommandHandler('start', start),
-            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button)
+            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
+            MessageHandler(filters.Regex('^(🚀 Продолжить|🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
         ]
     )
     
@@ -1930,7 +2036,7 @@ def main():
     
     # ОБРАБОТЧИК ДЛЯ ЛЮБЫХ СООБЩЕНИЙ ВНЕ КОНВЕРСАЦИИ
     # Этот обработчик будет ловить все сообщения, когда бот не в активном состоянии
-    application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_unknown_message), group=1)
+    application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_unknown_message), group=2)
 
     # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА
     async def test_cmd(update: Update, context):
