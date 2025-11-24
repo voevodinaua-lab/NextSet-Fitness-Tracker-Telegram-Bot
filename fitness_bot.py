@@ -755,18 +755,24 @@ async def save_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     context.user_data.pop('current_exercise', None)
     context.user_data.pop('cardio_type', None)
     
-    keyboard = [
-        ['💪 Силовые упражнения', '🏃 Кардио'],
-        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        f"✅ Упражнение сохранено!\n\n{exercise_text}\n"
-        "Выберите следующее упражнение или завершите тренировку:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    
-    return TRAINING
+    # Проверяем, находимся ли мы в режиме редактирования
+    if context.user_data.get('editing_mode'):
+        # Возвращаемся к редактированию тренировки
+        return await finish_training(update, context)
+    else:
+        # Продолжаем обычную тренировку
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        
+        await update.message.reply_text(
+            f"✅ Упражнение сохранено!\n\n{exercise_text}\n"
+            "Выберите следующее упражнение или завершите тренировку:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        
+        return TRAINING
 
 async def show_exercises_management(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать управление упражнениями"""
@@ -1025,18 +1031,24 @@ async def handle_cardio_details_input(update: Update, context: ContextTypes.DEFA
         context.user_data.pop('current_exercise', None)
         context.user_data.pop('cardio_type', None)
         
-        keyboard = [
-            ['💪 Силовые упражнения', '🏃 Кардио'],
-            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-        ]
-        
-        await update.message.reply_text(
-            f"✅ Кардио сохранено!\n{exercise_data['name']}: {exercise_data['details']}\n\n"
-            "Выберите следующее упражнение или завершите тренировку:",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-        )
-        
-        return TRAINING
+        # Проверяем, находимся ли мы в режиме редактирования
+        if context.user_data.get('editing_mode'):
+            # Возвращаемся к редактированию тренировки
+            return await finish_training(update, context)
+        else:
+            # Продолжаем обычную тренировку
+            keyboard = [
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ]
+            
+            await update.message.reply_text(
+                f"✅ Кардио сохранено!\n{exercise_data['name']}: {exercise_data['details']}\n\n"
+                "Выберите следующее упражнение или завершите тренировку:",
+                reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            )
+            
+            return TRAINING
         
     except (ValueError, IndexError):
         cardio_type = context.user_data.get('cardio_type', '⏱️ Мин/Метры')
@@ -1184,7 +1196,7 @@ async def handle_edit_training(update: Update, context: ContextTypes.DEFAULT_TYP
         return await finish_training(update, context)
     
     elif choice == '📝 Добавить упражнение':
-        # Сохраняем контекст редактирования и переходим к выбору типа упражнения
+        # Устанавливаем флаг редактирования и переходим к выбору типа упражнения
         context.user_data['editing_mode'] = True
         keyboard = [
             ['💪 Силовые упражнения', '🏃 Кардио'],
@@ -1635,27 +1647,27 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
             ],
             INPUT_MEASUREMENTS_CHOICE: [
-                MessageHandler(filters.Regex('^📝 Ввести замеры$'), handle_measurements_choice),
-                MessageHandler(filters.Regex('^⏭️ Отказаться$'), handle_measurements_choice),
-                MessageHandler(filters.Regex('^🔙 Главное меню$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^(📝 Ввести замеры)$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^(⏭️ Отказаться)$'), handle_measurements_choice),
+                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), handle_measurements_choice),
             ],
             INPUT_MEASUREMENTS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
             ],
             TRAINING: [
-                MessageHandler(filters.Regex('^💪 Силовые упражнения$'), show_strength_exercises),
-                MessageHandler(filters.Regex('^🏃 Кардио$'), handle_cardio),
-                MessageHandler(filters.Regex('^✏️ Добавить свое упражнение$'), choose_exercise_type),
-                MessageHandler(filters.Regex('^🏁 Завершить тренировку$'), finish_training),
+                MessageHandler(filters.Regex('^(💪 Силовые упражнения)$'), show_strength_exercises),
+                MessageHandler(filters.Regex('^(🏃 Кардио)$'), handle_cardio),
+                MessageHandler(filters.Regex('^(✏️ Добавить свое упражнение)$'), choose_exercise_type),
+                MessageHandler(filters.Regex('^(🏁 Завершить тренировку)$'), finish_training),
             ],
             CHOOSE_EXERCISE: [
-                MessageHandler(filters.Regex('^🔙 Назад к тренировке$'), save_measurements),
+                MessageHandler(filters.Regex('^(🔙 Назад к тренировке)$'), save_measurements),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_selection),
             ],
             INPUT_SETS: [
-                MessageHandler(filters.Regex('^✅ Добавить еще подходы$'), add_another_set),
-                MessageHandler(filters.Regex('^💾 Сохранить упражнение$'), save_exercise),
-                MessageHandler(filters.Regex('^❌ Отменить упражнение$'), cancel_exercise),
+                MessageHandler(filters.Regex('^(✅ Добавить еще подходы)$'), add_another_set),
+                MessageHandler(filters.Regex('^(💾 Сохранить упражнение)$'), save_exercise),
+                MessageHandler(filters.Regex('^(❌ Отменить упражнение)$'), cancel_exercise),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
             ],
             ADD_CUSTOM_EXERCISE: [
@@ -1668,48 +1680,48 @@ def main():
                 MessageHandler(filters.TEXT & ~filters.COMMAND, save_comment),
             ],
             STATS_PERIOD: [
-                MessageHandler(filters.Regex('^📊 Общая статистика$'), show_general_statistics),
-                MessageHandler(filters.Regex('^📅 Текущая неделя$'), show_general_statistics),
-                MessageHandler(filters.Regex('^📅 Текущий месяц$'), show_general_statistics),
-                MessageHandler(filters.Regex('^📅 Текущий год$'), show_general_statistics),
-                MessageHandler(filters.Regex('^📋 Детальная статистика$'), show_detailed_statistics),
-                MessageHandler(filters.Regex('^🔙 Главное меню$'), start),
+                MessageHandler(filters.Regex('^(📊 Общая статистика)$'), show_general_statistics),
+                MessageHandler(filters.Regex('^(📅 Текущая неделя)$'), show_general_statistics),
+                MessageHandler(filters.Regex('^(📅 Текущий месяц)$'), show_general_statistics),
+                MessageHandler(filters.Regex('^(📅 Текущий год)$'), show_general_statistics),
+                MessageHandler(filters.Regex('^(📋 Детальная статистика)$'), show_detailed_statistics),
+                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
             ],
             EXPORT_MENU: [
-                MessageHandler(filters.Regex('^📅 Текущий месяц$'), export_data),
-                MessageHandler(filters.Regex('^📅 Все время$'), export_data),
-                MessageHandler(filters.Regex('^🔙 Главное меню$'), start),
+                MessageHandler(filters.Regex('^(📅 Текущий месяц)$'), export_data),
+                MessageHandler(filters.Regex('^(📅 Все время)$'), export_data),
+                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
             ],
             EXERCISES_MANAGEMENT: [
-                MessageHandler(filters.Regex('^➕ Добавить упражнение$'), choose_exercise_type),
-                MessageHandler(filters.Regex('^🗑️ Удалить упражнение$'), show_delete_exercise_menu),
-                MessageHandler(filters.Regex('^🔙 Главное меню$'), start),
+                MessageHandler(filters.Regex('^(➕ Добавить упражнение)$'), choose_exercise_type),
+                MessageHandler(filters.Regex('^(🗑️ Удалить упражнение)$'), show_delete_exercise_menu),
+                MessageHandler(filters.Regex('^(🔙 Главное меню)$'), start),
             ],
             CHOOSE_EXERCISE_TYPE: [
-                MessageHandler(filters.Regex('^💪 Силовое упражнение$'), add_custom_exercise),
-                MessageHandler(filters.Regex('^🏃 Кардио упражнение$'), add_custom_exercise),
-                MessageHandler(filters.Regex('^🔙 Назад к управлению упражнениями$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^(💪 Силовое упражнение)$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^(🏃 Кардио упражнение)$'), add_custom_exercise),
+                MessageHandler(filters.Regex('^(🔙 Назад к управлению упражнениями)$'), add_custom_exercise),
             ],
             DELETE_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise),
             ],
             CARDIO_TYPE_SELECTION: [
-                MessageHandler(filters.Regex('^⏱️ Мин/Метры$'), handle_cardio_type_selection),
-                MessageHandler(filters.Regex('^🚀 Км/Час$'), handle_cardio_type_selection),
-                MessageHandler(filters.Regex('^🔙 Назад к кардио$'), handle_cardio),
+                MessageHandler(filters.Regex('^(⏱️ Мин/Метры)$'), handle_cardio_type_selection),
+                MessageHandler(filters.Regex('^(🚀 Км/Час)$'), handle_cardio_type_selection),
+                MessageHandler(filters.Regex('^(🔙 Назад к кардио)$'), handle_cardio),
             ],
             INPUT_CARDIO_DETAILS: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_details_input),
             ],
             CONFIRM_FINISH: [
-                MessageHandler(filters.Regex('^✅ Точно завершить$'), handle_finish_confirmation),
-                MessageHandler(filters.Regex('^✏️ Скорректировать$'), handle_finish_confirmation),
-                MessageHandler(filters.Regex('^🔙 Продолжить тренировку$'), handle_finish_confirmation),
+                MessageHandler(filters.Regex('^(✅ Точно завершить)$'), handle_finish_confirmation),
+                MessageHandler(filters.Regex('^(✏️ Скорректировать)$'), handle_finish_confirmation),
+                MessageHandler(filters.Regex('^(🔙 Продолжить тренировку)$'), handle_finish_confirmation),
             ],
             EDIT_TRAINING: [
-                MessageHandler(filters.Regex('^📝 Добавить упражнение$'), handle_edit_training),
-                MessageHandler(filters.Regex('^🗑️ Удалить упражнение$'), handle_edit_training),
-                MessageHandler(filters.Regex('^🔙 Назад к сводке$'), handle_edit_training),
+                MessageHandler(filters.Regex('^(📝 Добавить упражнение)$'), handle_edit_training),
+                MessageHandler(filters.Regex('^(🗑️ Удалить упражнение)$'), handle_edit_training),
+                MessageHandler(filters.Regex('^(🔙 Назад к сводке)$'), handle_edit_training),
             ],
             EDIT_EXERCISE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_deletion),
