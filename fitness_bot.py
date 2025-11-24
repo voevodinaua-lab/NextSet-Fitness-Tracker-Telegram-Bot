@@ -1965,12 +1965,11 @@ def main():
         entry_points=[
             CommandHandler('start', start),
             MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)  # Обработка любого сообщения для неактивных пользователей
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
         ],
         states={
             INACTIVE: [
-                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
-                MessageHandler(filters.Regex('^(🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message),
             ],
             MAIN_MENU: [
@@ -1989,10 +1988,16 @@ def main():
                                            handle_cardio(u, c) if u.message.text == '🏃 Кардио' else
                                            choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
                                            finish_training(u, c))),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, 
+                              lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
+                                           handle_cardio(u, c) if u.message.text == '🏃 Кардио' else
+                                           choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
+                                           finish_training(u, c) if u.message.text == '🏁 Завершить тренировку' else
+                                           None)),
             ],
             CHOOSE_EXERCISE: [
                 MessageHandler(filters.Regex('^(🔙 Назад к тренировке)$'), 
-                              lambda u, c: (save_measurements(u, c))),
+                              lambda u, c: start_training(u, c)),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercise_selection),
             ],
             INPUT_SETS: [
@@ -2016,17 +2021,31 @@ def main():
                               lambda u, c: (show_general_statistics(u, c) if u.message.text in ['📊 Общая статистика', '📅 Текущая неделя', '📅 Текущий месяц', '📅 Текущий год'] else
                                            show_detailed_statistics(u, c) if u.message.text == '📋 Детальная статистика' else
                                            start(u, c))),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, 
+                              lambda u, c: (show_general_statistics(u, c) if u.message.text in ['📊 Общая статистика', '📅 Текущая неделя', '📅 Текущий месяц', '📅 Текущий год'] else
+                                           show_detailed_statistics(u, c) if u.message.text == '📋 Детальная статистика' else
+                                           start(u, c) if u.message.text == '🔙 Главное меню' else
+                                           None)),
             ],
             EXPORT_MENU: [
                 MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), 
                               lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
                                            start(u, c))),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, 
+                              lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
+                                           start(u, c) if u.message.text == '🔙 Главное меню' else
+                                           None)),
             ],
             EXERCISES_MANAGEMENT: [
                 MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), 
                               lambda u, c: (choose_exercise_type(u, c) if u.message.text == '➕ Добавить упражнение' else
                                            show_delete_exercise_menu(u, c) if u.message.text == '🗑️ Удалить упражнение' else
                                            start(u, c))),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, 
+                              lambda u, c: (choose_exercise_type(u, c) if u.message.text == '➕ Добавить упражнение' else
+                                           show_delete_exercise_menu(u, c) if u.message.text == '🗑️ Удалить упражнение' else
+                                           start(u, c) if u.message.text == '🔙 Главное меню' else
+                                           None)),
             ],
             CHOOSE_EXERCISE_TYPE: [
                 MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке|🔙 Назад к управлению упражнениями)$'), add_custom_exercise),
