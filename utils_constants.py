@@ -29,7 +29,7 @@
     
     # Очистка данных
     CLEAR_DATA_CONFIRM
-) = range(45)
+) = range(46)  # ИЗМЕНИЛ range(45) НА range(46)
 
 # Типы упражнений
 STRENGTH_TYPE = 'strength'
