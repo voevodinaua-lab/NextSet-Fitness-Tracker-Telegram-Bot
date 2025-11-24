@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
     EXERCISES_MANAGEMENT, DELETE_EXERCISE, CHOOSE_EXERCISE_TYPE,
     CARDIO_TYPE_SELECTION, INPUT_CARDIO_DETAILS, CONFIRM_FINISH,
     EDIT_TRAINING, EDIT_EXERCISE, INPUT_MEASUREMENTS_CHOICE,
-    CLEAR_DATA_CONFIRM
-) = range(21)
+    CLEAR_DATA_CONFIRM, INACTIVE
+) = range(22)
 
 # База упражнений по умолчанию
 DEFAULT_STRENGTH_EXERCISES = [
@@ -161,12 +161,14 @@ def save_user_data(user_id, user_data):
         
         try:
             with conn.cursor() as cur:
+                # Убедимся, что сохраняем как JSON строку
+                user_data_json = json.dumps(user_data, ensure_ascii=False)
                 cur.execute('''
                     INSERT INTO users (user_id, user_data, updated_at)
                     VALUES (%s, %s, CURRENT_TIMESTAMP)
                     ON CONFLICT (user_id) 
                     DO UPDATE SET user_data = %s, updated_at = CURRENT_TIMESTAMP
-                ''', (user_id, json.dumps(user_data), json.dumps(user_data)))
+                ''', (user_id, user_data_json, user_data_json))
             
             conn.commit()
             conn.close()
@@ -200,7 +202,18 @@ def load_user_data(user_id):
             conn.close()
             
             if result and result[0]:
-                user_data = json.loads(result[0])
+                data = result[0]
+                # ИСПРАВЛЕНИЕ: проверяем тип данных
+                if isinstance(data, dict):
+                    # Данные уже в формате словаря
+                    user_data = data
+                elif isinstance(data, str):
+                    # Данные в формате JSON строки
+                    user_data = json.loads(data)
+                else:
+                    # Неизвестный формат, используем данные по умолчанию
+                    user_data = get_default_user_data()
+                
                 user_data_cache[user_id] = user_data  # Сохраняем в кеш
                 return user_data
         except Exception as e:
@@ -424,7 +437,12 @@ def update_statistics(user_id, training):
     save_user_data(user_id, user_data)
 
 async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка любых сообщений, когда бот не в активном состоянии"""
+    """Обработка любых сообщений, когда бот не в активном состоянии ConversationHandler"""
+    # Проверяем, находится ли пользователь уже в активном состоянии
+    if context.user_data.get('in_conversation'):
+        # Пользователь уже в ConversationHandler, игнорируем это сообщение
+        return
+    
     user = update.message.from_user
     user_id = user.id
     
@@ -474,14 +492,22 @@ async def handle_unknown_message(update: Update, context: ContextTypes.DEFAULT_T
             welcome_text,
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
         )
+    
+    # Устанавливаем флаг, что мы в состоянии INACTIVE
+    return INACTIVE
 
 async def start_from_button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка нажатия кнопки старта"""
+    # Устанавливаем флаг активной конверсации
+    context.user_data['in_conversation'] = True
     return await start(update, context)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало работы с ботом"""
     user = update.message.from_user
+    
+    # Устанавливаем флаг активной конверсации
+    context.user_data['in_conversation'] = True
     
     # Инициализируем данные пользователя при первом старте
     user_data = load_user_data(user.id)
@@ -570,6 +596,7 @@ async def handle_clear_data_choice(update: Update, context: ContextTypes.DEFAULT
             "❌ Пожалуйста, используйте кнопки для выбора действия",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
         )
+        return INACTIVE
 
 async def handle_clear_data_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка подтверждения очистки данных"""
@@ -1937,9 +1964,15 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler('start', start),
-            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button)
+            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)  # Обработка любого сообщения для неактивных пользователей
         ],
         states={
+            INACTIVE: [
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
+                MessageHandler(filters.Regex('^(🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message),
+            ],
             MAIN_MENU: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
             ],
@@ -2028,15 +2061,11 @@ def main():
         fallbacks=[
             CommandHandler('start', start),
             MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
-            MessageHandler(filters.Regex('^(🚀 Продолжить|🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
-        ]
+        ],
+        allow_reentry=True
     )
     
     application.add_handler(conv_handler)
-    
-    # ОБРАБОТЧИК ДЛЯ ЛЮБЫХ СООБЩЕНИЙ ВНЕ КОНВЕРСАЦИИ
-    # Этот обработчик будет ловить все сообщения, когда бот не в активном состоянии
-    application.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_unknown_message), group=2)
 
     # ПРОСТЫЕ КОМАНДЫ ДЛЯ ТЕСТА
     async def test_cmd(update: Update, context):
