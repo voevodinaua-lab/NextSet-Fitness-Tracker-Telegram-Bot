@@ -1,6 +1,8 @@
 import logging
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ContextTypes
+
+# ИМПОРТЫ ИЗ БАЗЫ ДАННЫХ
 from database import create_user, get_custom_exercises, get_user_trainings
 from utils_constants import *
 
@@ -223,27 +225,25 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     text = update.message.text
     
     if text == '💪 Начать тренировку':
-        from handlers.training import start_training
+        from handlers_training import start_training
         return await start_training(update, context)
     elif text == '📊 История тренировок':
-        from handlers.training import show_training_history
+        from handlers_training import show_training_history
         return await show_training_history(update, context)
     elif text == '📝 Мои упражнения':
-        from handlers.exercises import show_exercises_management
+        from handlers_exercises import show_exercises_management
         return await show_exercises_management(update, context)
     elif text == '📈 Статистика':
-        from handlers.statistics import show_statistics_menu
+        from handlers_statistics import show_statistics_menu
         return await show_statistics_menu(update, context)
     elif text == '📏 Мои замеры':
-        from handlers.measurements import show_measurements_history
+        from handlers_measurements import show_measurements_history
         return await show_measurements_history(update, context)
     elif text == '📤 Выгрузка данных':
-        from handlers.export import show_export_menu
+        from handlers_export import show_export_menu
         return await show_export_menu(update, context)
     elif text == '❓ Помощь':
         return await help_command(update, context)
     else:
         await update.message.reply_text("Пожалуйста, используйте кнопки меню")
-
         return MAIN_MENU
-
