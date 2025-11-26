@@ -223,27 +223,46 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка главного меню"""
     text = update.message.text
+    user_id = update.message.from_user.id
+    
+    print(f"DEBUG: Получено сообщение: {text} от пользователя {user_id}")  # Для отладки
     
     if text == '💪 Начать тренировку':
+        print("DEBUG: Переход к началу тренировки")
         from handlers_training import start_training
         return await start_training(update, context)
     elif text == '📊 История тренировок':
+        print("DEBUG: Переход к истории тренировок")
         from handlers_training import show_training_history
         return await show_training_history(update, context)
     elif text == '📝 Мои упражнения':
+        print("DEBUG: Переход к управлению упражнениями")
         from handlers_exercises import show_exercises_management
         return await show_exercises_management(update, context)
     elif text == '📈 Статистика':
+        print("DEBUG: Переход к статистике")
         from handlers_statistics import show_statistics_menu
         return await show_statistics_menu(update, context)
     elif text == '📏 Мои замеры':
+        print("DEBUG: Переход к замерам")
         from handlers_measurements import show_measurements_history
         return await show_measurements_history(update, context)
     elif text == '📤 Выгрузка данных':
+        print("DEBUG: Переход к экспорту")
         from handlers_export import show_export_menu
         return await show_export_menu(update, context)
     elif text == '❓ Помощь':
+        print("DEBUG: Показ помощи")
         return await help_command(update, context)
     else:
-        await update.message.reply_text("Пожалуйста, используйте кнопки меню")
+        print(f"DEBUG: Неизвестная команда: {text}")
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки меню",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Начать тренировку', '📊 История тренировок'],
+                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                ['📤 Выгрузка данных', '❓ Помощь']
+            ], resize_keyboard=True)
+        )
         return MAIN_MENU
+
