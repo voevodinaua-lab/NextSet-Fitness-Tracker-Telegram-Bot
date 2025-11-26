@@ -69,10 +69,10 @@ def main():
     print("✅ Токен получен, запускаем бота...")
     
     try:
-        # Создаем приложение с совместимыми настройками
-        application = Application.builder().token(TOKEN).concurrent_updates(True).build()
+        # Создаем приложение
+        application = Application.builder().token(TOKEN).build()
         
-        # Создаем ConversationHandler с новой архитектурой
+        # Создаем ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[
                 CommandHandler('start', start),
@@ -108,6 +108,7 @@ def main():
                                                finish_training(u, c))),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
+                # ... остальные состояния остаются такими же
                 CHOOSE_STRENGTH_EXERCISE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
                 ],
@@ -223,14 +224,18 @@ def main():
         print("🤖 БОТ ЗАПУЩЕН И ГОТОВ К РАБОТЕ!")
         print("💡 Используйте /test или /status для проверки")
         
-        application.run_polling(
+        return application
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка при создании приложения: {e}")
+        print(f"❌ Критическая ошибка: {e}")
+        return None
+
+if __name__ == '__main__':
+    app = main()
+    if app:
+        app.run_polling(
             drop_pending_updates=True,
             allowed_updates=Update.ALL_TYPES
         )
-        
-    except Exception as e:
-        logger.error(f"❌ Ошибка при запуске бота: {e}")
-        print(f"❌ Критическая ошибка: {e}")
 
-if __name__ == '__main__':
-    main()
