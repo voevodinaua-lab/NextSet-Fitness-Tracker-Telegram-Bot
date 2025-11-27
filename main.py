@@ -93,14 +93,7 @@ def setup_application():
     try:
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
-        
-        # Глобальный обработчик для отладки
-        async def catch_all_handler(update, context):
-            print(f"CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-            await update.message.reply_text("Используйте кнопки меню для навигации")
-
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
-        
+             
         # Создаем ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[
@@ -262,6 +255,14 @@ def main():
     print("ЗАПУСК FITNESS TRACKER BOT")
     print("=" * 50)
     
+    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
+    db_available = test_db_connection_quick()
+    if not db_available:
+        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
+    else:
+        print("Все функции бота доступны")
+    
+    
     # Создаем менеджер бота
     bot_manager = BotManager()
     
@@ -311,3 +312,4 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
