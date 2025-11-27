@@ -69,8 +69,8 @@ async def start_from_button(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало работы с ботом"""
+    print("DEBUG: Функция start вызвана")  # Отладочная информация
     user = update.message.from_user
-    user_id = user.id
     
     # Создаем/обновляем пользователя в БД
     create_user(user_id, user.username, user.first_name)
@@ -265,4 +265,5 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             ], resize_keyboard=True)
         )
         return MAIN_MENU
+
 
