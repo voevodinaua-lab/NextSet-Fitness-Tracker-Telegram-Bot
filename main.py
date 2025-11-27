@@ -1,55 +1,3 @@
-def setup_application():
-    """Настройка и создание приложения"""
-    print("🚀 НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
-    
-    # Проверка токена
-    TOKEN = os.getenv('BOT_TOKEN')
-    if not TOKEN:
-        print("❌ ОШИБКА: BOT_TOKEN не установлен!")
-        print("💡 Убедитесь, что переменная BOT_TOKEN установлена в Render")
-        return None
-
-    print("✅ Токен получен, создаем приложение...")
-    
-    try:
-        # Создаем приложение
-        application = Application.builder().token(TOKEN).build()
-        
-        # === ДОБАВЬТЕ ЭТО ВНУТРИ try блока ===
-        async def catch_all_handler(update, context):
-            print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-            await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
-
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
-        # === КОНЕЦ ДОБАВЛЕНИЯ ===
-        
-        # Создаем ConversationHandler
-        conv_handler = ConversationHandler(
-📋 Правильные отступы:
-text
-def setup_application():
-    try:
-        application = Application.builder().token(TOKEN).build()
-        
-        async def catch_all_handler(update, context):
-∙∙∙∙∙∙∙∙print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-∙∙∙∙∙∙∙∙await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
-
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
-        
-        conv_handler = ConversationHandler(
-Каждая строка внутри функции должна иметь 4 пробела отступа!
-
-Исправьте отступы и сделайте redeploy! 🚀
-
-Перепиши весь файл main.py  в корректными отступами в  async def catch_all_handler(update, context):
-∙∙∙∙∙∙∙∙print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-∙∙∙∙∙∙∙∙await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
-
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
-        
-        conv_handler = ConversationHandler( и добавлением логирования подключения к БД
-python
 import os
 import logging
 import sys
@@ -87,10 +35,10 @@ class BotManager:
         
     def signal_handler(self, signum, frame):
         """Обработчик сигналов для graceful shutdown"""
-        print(f"🔄 Получен сигнал {signum}, останавливаем бота...")
+        print(f"Получен сигнал {signum}, останавливаем бота...")
         self.shutdown_requested = True
         if self.application:
-            print("⏳ Завершаем работу бота...")
+            print("Завершаем работу бота...")
             # Используем асинхронную остановку
             import asyncio
             try:
@@ -111,36 +59,36 @@ class BotManager:
 def test_db_connection_quick():
     """Быстрая проверка подключения к базе с подробным логированием"""
     try:
-        print("🔍 Пытаемся подключиться к базе данных...")
+        print("Пытаемся подключиться к базе данных...")
         conn = get_db_connection()
         if conn:
-            print("✅ Соединение с БД установлено, выполняем тестовый запрос...")
+            print("Соединение с БД установлено, выполняем тестовый запрос...")
             with conn.cursor() as cur:
                 cur.execute('SELECT 1')
                 result = cur.fetchone()
-                print(f"🎉 Тестовый запрос выполнен успешно: {result}")
+                print(f"Тестовый запрос выполнен успешно: {result}")
             conn.close()
-            print("🎉 База данных полностью доступна!")
+            print("База данных полностью доступна!")
             return True
         else:
-            print("❌ Не удалось получить соединение с БД")
+            print("Не удалось получить соединение с БД")
             return False
     except Exception as e:
-        print(f"⚠️ Ошибка подключения к базе данных: {e}")
+        print(f"Ошибка подключения к базе данных: {e}")
         return False
 
 def setup_application():
     """Настройка и создание приложения"""
-    print("🚀 НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
+    print("НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
     
     # Проверка токена
     TOKEN = os.getenv('BOT_TOKEN')
     if not TOKEN:
-        print("❌ ОШИБКА: BOT_TOKEN не установлен!")
-        print("💡 Убедитесь, что переменная BOT_TOKEN установлена в Render")
+        print("ОШИБКА: BOT_TOKEN не установлен!")
+        print("Убедитесь, что переменная BOT_TOKEN установлена в Render")
         return None
 
-    print("✅ Токен получен, создаем приложение...")
+    print("Токен получен, создаем приложение...")
     
     try:
         # Создаем приложение
@@ -148,8 +96,8 @@ def setup_application():
         
         # Глобальный обработчик для отладки
         async def catch_all_handler(update, context):
-            print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-            await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+            print(f"CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+            await update.message.reply_text("Используйте кнопки меню для навигации")
 
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
         
@@ -173,7 +121,7 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
                 ],
                 
-                # 🏋️ Модуль тренировки
+                # Модуль тренировки
                 INPUT_MEASUREMENTS_CHOICE: [
                     MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
@@ -227,7 +175,7 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
                 ],
                 
-                # 📝 Модуль управления упражнениями
+                # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
                     MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), 
                                   lambda u, c: (choose_exercise_type_mgmt(u, c) if u.message.text == '➕ Добавить упражнение' else
@@ -249,7 +197,7 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise_handler),
                 ],
                 
-                # 📊 Модуль статистики
+                # Модуль статистики
                 STATS_MENU: [
                     MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), 
                                   lambda u, c: (show_general_statistics(u, c) if u.message.text == '📊 Общая статистика' else
@@ -261,12 +209,12 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 
-                # 📏 Модуль замеров
+                # Модуль замеров
                 MEASUREMENTS_HISTORY: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, show_measurements_history),
                 ],
                 
-                # 📤 Модуль экспорта
+                # Модуль экспорта
                 EXPORT_MENU: [
                     MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), 
                                   lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
@@ -285,33 +233,33 @@ def setup_application():
 
         # Простые команды для теста
         async def test_cmd(update, context):
-            await update.message.reply_text("🎉 Бот работает! Используйте кнопки меню для навигации.")
+            await update.message.reply_text("Бот работает! Используйте кнопки меню для навигации.")
 
         async def status_cmd(update, context):
             conn = get_db_connection()
             if conn:
-                status = "✅ База данных доступна"
+                status = "База данных доступна"
                 conn.close()
             else:
-                status = "⚠️ База данных недоступна"
+                status = "База данных недоступна"
             
-            await update.message.reply_text(f"🤖 Статус бота:\n{status}")
+            await update.message.reply_text(f"Статус бота:\n{status}")
 
         application.add_handler(CommandHandler("test", test_cmd))
         application.add_handler(CommandHandler("status", status_cmd))
 
-        print("✅ Приложение настроено успешно!")
+        print("Приложение настроено успешно!")
         return application
         
     except Exception as e:
-        logger.error(f"❌ Ошибка при создании приложения: {e}")
-        print(f"❌ Критическая ошибка: {e}")
+        logger.error(f"Ошибка при создании приложения: {e}")
+        print(f"Критическая ошибка: {e}")
         return None
 
 def main():
     """Основная функция запуска"""
     print("=" * 50)
-    print("🚀 ЗАПУСК FITNESS TRACKER BOT")
+    print("ЗАПУСК FITNESS TRACKER BOT")
     print("=" * 50)
     
     # Создаем менеджер бота
@@ -322,17 +270,17 @@ def main():
     signal.signal(signal.SIGINT, bot_manager.signal_handler)
     
     # ПРЯМАЯ проверка БД (без потока)
-    print("🔍 ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
+    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
     db_available = test_db_connection_quick()
     if not db_available:
-        print("⚠️ ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
+        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
     else:
-        print("✅ Все функции бота доступны")
+        print("Все функции бота доступны")
 
     # Настраиваем приложение
     application = setup_application()
     if not application:
-        print("❌ Не удалось создать приложение")
+        print("Не удалось создать приложение")
         return None
         
     bot_manager.application = application
@@ -342,9 +290,9 @@ if __name__ == '__main__':
     app = main()
     if app:
         try:
-            print("🤖 ЗАПУСКАЕМ БОТА...")
-            print("💡 Используйте /test или /status для проверки")
-            print("⚡ Бот готов к работе!")
+            print("ЗАПУСКАЕМ БОТА...")
+            print("Используйте /test или /status для проверки")
+            print("Бот готов к работе!")
             
             # Запускаем polling с улучшенными настройками
             app.run_polling(
@@ -354,12 +302,12 @@ if __name__ == '__main__':
             )
             
         except Exception as e:
-            print(f"❌ Ошибка при запуске бота: {e}")
-            print("🔄 Попытка перезапуска через 30 секунд...")
+            print(f"Ошибка при запуске бота: {e}")
+            print("Попытка перезапуска через 30 секунд...")
             import time
             time.sleep(30)
             # Попытка перезапуска
             os.execv(sys.executable, ['python'] + sys.argv)
     else:
-        print("❌ Не удалось запустить бота")
+        print("Не удалось запустить бота")
         sys.exit(1)
