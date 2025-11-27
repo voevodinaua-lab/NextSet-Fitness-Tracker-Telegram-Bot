@@ -1,10 +1,12 @@
 import os
 import logging
 import sys
+import signal
 import threading
 from dotenv import load_dotenv
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
+from telegram import Update
 
 # Импортируем наши модули
 from database import get_db_connection
@@ -26,6 +28,34 @@ logger = logging.getLogger(__name__)
 # Загружаем переменные окружения
 load_dotenv()
 
+class BotManager:
+    def __init__(self):
+        self.application = None
+        self.shutdown_requested = False
+        
+    def signal_handler(self, signum, frame):
+        """Обработчик сигналов для graceful shutdown"""
+        print(f"🔄 Получен сигнал {signum}, останавливаем бота...")
+        self.shutdown_requested = True
+        if self.application:
+            print("⏳ Завершаем работу бота...")
+            # Используем асинхронную остановку
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._shutdown())
+                else:
+                    asyncio.run(self._shutdown())
+            except:
+                # Если возникли проблемы с event loop, просто выходим
+                sys.exit(0)
+    
+    async def _shutdown(self):
+        """Асинхронное завершение работы"""
+        await self.application.stop()
+        await self.application.shutdown()
+
 def test_db_connection_quick():
     """Быстрая проверка подключения к базе"""
     try:
@@ -43,30 +73,18 @@ def test_db_connection_quick():
         print(f"⚠️ База данных недоступна: {e}")
         return False
 
-def main():
-    print("🚀 ЗАПУСК БОТА...")
+def setup_application():
+    """Настройка и создание приложения"""
+    print("🚀 НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
     
-    # Проверка подключения к базе данных
-    print("🔍 ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
-    
-    def check_db_in_thread():
-        db_available = test_db_connection_quick()
-        if not db_available:
-            print("⚠️ РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
-    
-    db_thread = threading.Thread(target=check_db_in_thread)
-    db_thread.daemon = True
-    db_thread.start()
-    db_thread.join(timeout=5)
-
     # Проверка токена
     TOKEN = os.getenv('BOT_TOKEN')
     if not TOKEN:
         print("❌ ОШИБКА: BOT_TOKEN не установлен!")
         print("💡 Убедитесь, что переменная BOT_TOKEN установлена в Render")
-        return
+        return None
 
-    print("✅ Токен получен, запускаем бота...")
+    print("✅ Токен получен, создаем приложение...")
     
     try:
         # Создаем приложение
@@ -219,10 +237,7 @@ def main():
         application.add_handler(CommandHandler("test", test_cmd))
         application.add_handler(CommandHandler("status", status_cmd))
 
-        # Запускаем бота
-        print("🤖 БОТ ЗАПУЩЕН И ГОТОВ К РАБОТЕ!")
-        print("💡 Используйте /test или /status для проверки")
-        
+        print("✅ Приложение настроено успешно!")
         return application
         
     except Exception as e:
@@ -230,13 +245,64 @@ def main():
         print(f"❌ Критическая ошибка: {e}")
         return None
 
+def main():
+    """Основная функция запуска"""
+    print("=" * 50)
+    print("🚀 ЗАПУСК FITNESS TRACKER BOT")
+    print("=" * 50)
+    
+    # Создаем менеджер бота
+    bot_manager = BotManager()
+    
+    # Регистрируем обработчики сигналов
+    signal.signal(signal.SIGTERM, bot_manager.signal_handler)
+    signal.signal(signal.SIGINT, bot_manager.signal_handler)
+    
+    # Проверка подключения к базе данных в отдельном потоке
+    print("🔍 ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
+    
+    def check_db_in_thread():
+        db_available = test_db_connection_quick()
+        if not db_available:
+            print("⚠️ РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
+    
+    db_thread = threading.Thread(target=check_db_in_thread)
+    db_thread.daemon = True
+    db_thread.start()
+    db_thread.join(timeout=5)  # Ждем максимум 5 секунд
+
+    # Настраиваем приложение
+    application = setup_application()
+    if not application:
+        print("❌ Не удалось создать приложение")
+        return None
+        
+    bot_manager.application = application
+    return application
+
 if __name__ == '__main__':
     app = main()
     if app:
-        app.run_polling(
-            drop_pending_updates=True,
-            allowed_updates=Update.ALL_TYPES
-        )
-
-
+        try:
+            print("🤖 ЗАПУСКАЕМ БОТА...")
+            print("💡 Используйте /test или /status для проверки")
+            print("⚡ Бот готов к работе!")
+            
+            # Запускаем polling с улучшенными настройками
+            app.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=Update.ALL_TYPES,
+                close_loop=False
+            )
+            
+        except Exception as e:
+            print(f"❌ Ошибка при запуске бота: {e}")
+            print("🔄 Попытка перезапуска через 30 секунд...")
+            import time
+            time.sleep(30)
+            # Попытка перезапуска
+            os.execv(sys.executable, ['python'] + sys.argv)
+    else:
+        print("❌ Не удалось запустить бота")
+        sys.exit(1)
 
