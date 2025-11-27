@@ -90,6 +90,12 @@ def setup_application():
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
         
+        async def catch_all_handler(update, context):
+        print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+        await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
+        
         # Создаем ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[
@@ -305,4 +311,5 @@ if __name__ == '__main__':
     else:
         print("❌ Не удалось запустить бота")
         sys.exit(1)
+
 
