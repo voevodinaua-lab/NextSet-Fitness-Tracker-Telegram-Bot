@@ -94,6 +94,15 @@ def setup_application():
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
              
+        # ДЕБАГ обработчик для логирования всех сообщений
+        async def debug_message_handler(update, context):
+            print(f"🔍 DEBUG: Получено сообщение: '{update.message.text}' от пользователя {update.effective_user.id}")
+            # Пропускаем сообщение дальше к ConversationHandler
+            return None
+
+        # Добавляем дебаг handler ПЕРВЫМ (group=1)
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, debug_message_handler), group=1)
+
         # Создаем ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[
@@ -218,6 +227,7 @@ def setup_application():
             fallbacks=[
                 CommandHandler('start', start),
                 MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
             ],
             allow_reentry=True
         )
@@ -312,4 +322,5 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
