@@ -1,3 +1,55 @@
+def setup_application():
+    """Настройка и создание приложения"""
+    print("🚀 НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
+    
+    # Проверка токена
+    TOKEN = os.getenv('BOT_TOKEN')
+    if not TOKEN:
+        print("❌ ОШИБКА: BOT_TOKEN не установлен!")
+        print("💡 Убедитесь, что переменная BOT_TOKEN установлена в Render")
+        return None
+
+    print("✅ Токен получен, создаем приложение...")
+    
+    try:
+        # Создаем приложение
+        application = Application.builder().token(TOKEN).build()
+        
+        # === ДОБАВЬТЕ ЭТО ВНУТРИ try блока ===
+        async def catch_all_handler(update, context):
+            print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+            await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
+        # === КОНЕЦ ДОБАВЛЕНИЯ ===
+        
+        # Создаем ConversationHandler
+        conv_handler = ConversationHandler(
+📋 Правильные отступы:
+text
+def setup_application():
+    try:
+        application = Application.builder().token(TOKEN).build()
+        
+        async def catch_all_handler(update, context):
+∙∙∙∙∙∙∙∙print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+∙∙∙∙∙∙∙∙await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
+        
+        conv_handler = ConversationHandler(
+Каждая строка внутри функции должна иметь 4 пробела отступа!
+
+Исправьте отступы и сделайте redeploy! 🚀
+
+Перепиши весь файл main.py  в корректными отступами в  async def catch_all_handler(update, context):
+∙∙∙∙∙∙∙∙print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+∙∙∙∙∙∙∙∙await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
+        
+        conv_handler = ConversationHandler( и добавлением логирования подключения к БД
+python
 import os
 import logging
 import sys
@@ -57,20 +109,24 @@ class BotManager:
         await self.application.shutdown()
 
 def test_db_connection_quick():
-    """Быстрая проверка подключения к базе"""
+    """Быстрая проверка подключения к базе с подробным логированием"""
     try:
+        print("🔍 Пытаемся подключиться к базе данных...")
         conn = get_db_connection()
         if conn:
+            print("✅ Соединение с БД установлено, выполняем тестовый запрос...")
             with conn.cursor() as cur:
                 cur.execute('SELECT 1')
+                result = cur.fetchone()
+                print(f"🎉 Тестовый запрос выполнен успешно: {result}")
             conn.close()
-            print("🎉 База данных доступна!")
+            print("🎉 База данных полностью доступна!")
             return True
         else:
-            print("❌ База данных недоступна")
+            print("❌ Не удалось получить соединение с БД")
             return False
     except Exception as e:
-        print(f"⚠️ База данных недоступна: {e}")
+        print(f"⚠️ Ошибка подключения к базе данных: {e}")
         return False
 
 def setup_application():
@@ -90,9 +146,10 @@ def setup_application():
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
         
+        # Глобальный обработчик для отладки
         async def catch_all_handler(update, context):
-        print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
-        await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
+            print(f"🔍 CATCH-ALL: '{update.message.text}', state: {context.user_data}")
+            await update.message.reply_text("🔄 Используйте кнопки меню для навигации")
 
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, catch_all_handler))
         
@@ -264,18 +321,13 @@ def main():
     signal.signal(signal.SIGTERM, bot_manager.signal_handler)
     signal.signal(signal.SIGINT, bot_manager.signal_handler)
     
-    # Проверка подключения к базе данных в отдельном потоке
-    print("🔍 ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
-    
-    def check_db_in_thread():
-        db_available = test_db_connection_quick()
-        if not db_available:
-            print("⚠️ РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
-    
-    db_thread = threading.Thread(target=check_db_in_thread)
-    db_thread.daemon = True
-    db_thread.start()
-    db_thread.join(timeout=5)  # Ждем максимум 5 секунд
+    # ПРЯМАЯ проверка БД (без потока)
+    print("🔍 ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
+    db_available = test_db_connection_quick()
+    if not db_available:
+        print("⚠️ ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
+    else:
+        print("✅ Все функции бота доступны")
 
     # Настраиваем приложение
     application = setup_application()
@@ -311,5 +363,3 @@ if __name__ == '__main__':
     else:
         print("❌ Не удалось запустить бота")
         sys.exit(1)
-
-
