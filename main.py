@@ -11,12 +11,12 @@ from telegram import Update
 # Импортируем наши модули
 from database import get_db_connection
 from utils_constants import *
-from handlers_common import start, start_from_button, handle_unknown_message, handle_main_menu, handle_clear_data_choice, handle_clear_data_confirmation
+from handlers_common import *
 from handlers_training import *
-from handlers_exercises import choose_exercise_type_mgmt, show_delete_exercise_menu, add_custom_exercise_mgmt, save_new_strength_exercise_mgmt, save_new_cardio_exercise_mgmt, delete_exercise_handler
-from handlers_statistics import show_general_statistics, show_weekly_stats, show_monthly_stats, show_yearly_stats, show_exercise_stats
+from handlers_exercises import *
+from handlers_statistics import *
 from handlers_measurements import show_measurements_history
-from handlers_export import export_data
+from handlers_export import *
 
 # Настройка логирования
 logging.basicConfig(
@@ -378,6 +378,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
