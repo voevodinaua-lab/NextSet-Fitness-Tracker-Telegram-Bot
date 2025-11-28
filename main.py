@@ -78,28 +78,6 @@ def test_db_connection_quick():
         return False
 
 # Асинхронные функции-обертки для обработки состояний
-async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора в меню тренировки"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🚨 DEBUG TRAINING_MENU: пользователь {user_id} отправил '{text}'")
-    
-    if text == '💪 Силовые упражнения':
-        print(f"🔧 DEBUG: Переход к силовым упражнениям для пользователя {user_id}")
-        return await show_strength_exercises(update, context)
-    elif text == '🏃 Кардио':
-        print(f"🔧 DEBUG: Переход к кардио для пользователя {user_id}")
-        return await show_cardio_exercises(update, context)
-    elif text == '✏️ Добавить свое упражнение':
-        print(f"🔧 DEBUG: Добавление упражнения для пользователя {user_id}")
-        return await choose_exercise_type(update, context)
-    elif text == '🏁 Завершить тренировку':
-        print(f"🔧 DEBUG: Завершение тренировки для пользователя {user_id}")
-        return await finish_training(update, context)
-    else:
-        print(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
-        return await handle_training_menu_fallback(update, context)
-
 async def handle_exercises_management_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в управлении упражнениями"""
     text = update.message.text
@@ -379,6 +357,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
