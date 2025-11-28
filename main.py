@@ -12,7 +12,7 @@ from telegram import Update
 from database import get_db_connection
 from utils_constants import *
 from handlers_common import start, start_from_button, handle_unknown_message, handle_main_menu, handle_clear_data_choice, handle_clear_data_confirmation
-from handlers_training import handle_measurements_choice, save_measurements, show_strength_exercises, show_cardio_exercises, choose_exercise_type, finish_training, handle_training_menu_fallback, handle_strength_exercise_selection, handle_set_input, handle_cardio_exercise_selection, handle_cardio_type_selection, handle_cardio_min_meters_input, handle_cardio_km_h_input, add_custom_exercise_from_training, save_new_exercise_from_training, handle_finish_confirmation, add_another_set, save_exercise, cancel_exercise
+from handlers_training import *
 from handlers_exercises import choose_exercise_type_mgmt, show_delete_exercise_menu, add_custom_exercise_mgmt, save_new_strength_exercise_mgmt, save_new_cardio_exercise_mgmt, delete_exercise_handler
 from handlers_statistics import show_general_statistics, show_weekly_stats, show_monthly_stats, show_yearly_stats, show_exercise_stats
 from handlers_measurements import show_measurements_history
@@ -378,6 +378,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
