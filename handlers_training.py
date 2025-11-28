@@ -755,3 +755,33 @@ async def handle_training_menu_fallback(update: Update, context: ContextTypes.DE
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
     return TRAINING_MENU
+    
+async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Упрощенный обработчик меню тренировки"""
+    text = update.message.text
+    print(f"🚨 TRAINING_MENU получил: '{text}'")
+    
+    if text == '💪 Силовые упражнения':
+        await update.message.reply_text("✅ Переходим к силовым упражнениям!")
+        return await show_strength_exercises(update, context)
+    elif text == '🏃 Кардио':
+        await update.message.reply_text("✅ Переходим к кардио!")
+        return await show_cardio_exercises(update, context)
+    elif text == '✏️ Добавить свое упражнение':
+        await update.message.reply_text("✅ Добавляем упражнение!")
+        return await choose_exercise_type(update, context)
+    elif text == '🏁 Завершить тренировку':
+        await update.message.reply_text("✅ Завершаем тренировку!")
+        return await finish_training(update, context)
+    else:
+        # Показываем меню снова
+        keyboard = [
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ]
+        
+        await update.message.reply_text(
+            f"Получено: '{text}'. Используйте кнопки тренировки:",
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        )
+        return TRAINING_MENU
