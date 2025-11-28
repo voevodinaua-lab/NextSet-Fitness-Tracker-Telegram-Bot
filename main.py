@@ -106,22 +106,22 @@ def setup_application():
         # Создаем ConversationHandler
         conv_handler = ConversationHandler(
             entry_points=[
-                CommandHandler('start', start),
-                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
+            CommandHandler('start', start),
+            MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
             ],
-            states={
-                INACTIVE: [
-                    MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🗑️ Начать с чистого листа)$'), handle_clear_data_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message),
-                ],
-                MAIN_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
-                ],
-                CLEAR_DATA_CONFIRM: [
-                    MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
-                ],
+        states={
+            INACTIVE: [
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку|🗑️ Очистить историю)$'), handle_clear_data_choice),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
+            ],
+            MAIN_MENU: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+            ],
+            CLEAR_DATA_CONFIRM: [
+                MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+            ],
                 
                 # Модуль тренировки
                 INPUT_MEASUREMENTS_CHOICE: [
@@ -226,8 +226,7 @@ def setup_application():
             },
             fallbacks=[
                 CommandHandler('start', start),
-                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить)$'), start_from_button),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
             ],
             allow_reentry=True
         )
@@ -322,5 +321,6 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
