@@ -726,4 +726,40 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
         )
         return TRAINING_MENU
 
+async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка выбора ввода замеров перед тренировкой"""
+    choice = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG INPUT_MEASUREMENTS_CHOICE: пользователь {user_id} выбрал '{choice}'")
+    
+    if choice == '📝 Ввести замеры':
+        await update.message.reply_text(
+            "📏 Введите ваши замеры в произвольном формате:\n"
+            "• Например: вес 65кг, талия 70см, грудь 95см\n"
+            "• Или: 65/70/95\n"
+            "• Или просто: 65кг",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return INPUT_MEASUREMENTS
+        
+    elif choice == '⏭️ Пропустить замеры':
+        print(f"🔧 DEBUG: пользователь {user_id} пропустил замеры, переходим к тренировке")
+        return await show_training_menu(update, context)
+        
+    elif choice == '🔙 Главное меню':
+        print(f"🔧 DEBUG: пользователь {user_id} вернулся в главное меню")
+        return await start(update, context)
+        
+    else:
+        # Если получен неизвестный текст, показываем клавиатуру снова
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора:",
+            reply_markup=ReplyKeyboardMarkup([
+                ['📝 Ввести замеры', '⏭️ Пропустить замеры'],
+                ['🔙 Главное меню']
+            ], resize_keyboard=True)
+        )
+        return INPUT_MEASUREMENTS_CHOICE
+
+
 
