@@ -190,28 +190,26 @@ def setup_application():
             ],
             states={
                 INACTIVE: [
-                    MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку|🗑️ Очистить историю)$'), handle_clear_data_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
                 ],
                 MAIN_MENU: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 CLEAR_DATA_CONFIRM: [
-                    MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
                 ],
                 
                 # Модуль тренировки - ИСПРАВЛЕННЫЙ ПОРЯДОК!
                 INPUT_MEASUREMENTS_CHOICE: [
-                    MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
                 ],
                 INPUT_MEASUREMENTS: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
-                    # Обрабатываем ВСЕ текстовые сообщения сначала
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_choice),
+                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
+                    # Потом все остальные текстовые сообщения (fallback)
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
                 ],
                 CHOOSE_STRENGTH_EXERCISE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
@@ -250,7 +248,8 @@ def setup_application():
                 
                 # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercises_management_choice),
+                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), handle_exercises_management_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 ADD_EXERCISE_TYPE_MGMT: [
                     MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
@@ -268,7 +267,8 @@ def setup_application():
                 
                 # Модуль статистики
                 STATS_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_stats_menu_choice),
+                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), handle_stats_menu_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 
                 # Модуль замеров
@@ -278,7 +278,8 @@ def setup_application():
                 
                 # Модуль экспорта
                 EXPORT_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_export_menu_choice),
+                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), handle_export_menu_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu)
                 ],
             },
             fallbacks=[
@@ -378,6 +379,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
