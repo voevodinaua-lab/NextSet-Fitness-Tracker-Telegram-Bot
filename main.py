@@ -94,37 +94,130 @@ def setup_application():
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
              
-        # ДЕБАГ обработчик для логирования всех сообщений
-       # async def debug_message_handler(update, context):
-        #    print(f"🔍 DEBUG: Получено сообщение: '{update.message.text}' от пользователя {update.effective_user.id}")
-            # Пропускаем сообщение дальше к ConversationHandler
-        #    return None
-
-        # Добавляем дебаг handler ПЕРВЫМ (group=1)
-       # application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, debug_message_handler), group=1)
-
         # Создаем ConversationHandler
         conv_handler = ConversationHandler(
-            entry_points=[
-                CommandHandler('start', start),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
-            ],
+    	    entry_points=[
+       		CommandHandler('start', start),
+        	MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
+        	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
+    	    ],
             states={
-                INACTIVE: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
+        	INACTIVE: [
+            	MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку|🗑️ Очистить историю)$'), handle_clear_data_choice),
+            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
+        	],
+        	MAIN_MENU: [
+            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+        	],
+        	CLEAR_DATA_CONFIRM: [
+            	MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
+            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+        	],
+                
+                # Модуль тренировки
+                INPUT_MEASUREMENTS_CHOICE: [
+                    MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
                 ],
-                MAIN_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                INPUT_MEASUREMENTS: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_simple),
+                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), 
+                                  lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
+                                               show_cardio_exercises(u, c) if u.message.text == '🏃 Кардио' else
+                                               choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
+                                               finish_training(u, c))),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
-                CLEAR_DATA_CONFIRM: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+                CHOOSE_STRENGTH_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
+                ],
+                INPUT_SETS: [
+                    MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), 
+                                  lambda u, c: (add_another_set(u, c) if u.message.text == '✅ Добавить еще подходы' else
+                                               save_exercise(u, c) if u.message.text == '💾 Сохранить упражнение' else
+                                               cancel_exercise(u, c))),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
+                ],
+                CHOOSE_CARDIO_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_exercise_selection),
+                ],
+                CARDIO_TYPE_SELECTION: [
+                    MessageHandler(filters.Regex('^(⏱️ Мин/Метры|🚀 Км/Час|🔙 Назад к кардио)$'), handle_cardio_type_selection),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_type_selection),
+                ],
+                INPUT_CARDIO_MIN_METERS: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_min_meters_input),
+                ],
+                INPUT_CARDIO_KM_H: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_km_h_input),
+                ],
+                ADD_EXERCISE_TYPE: [
+                    MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке)$'), add_custom_exercise_from_training),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_from_training),
+                ],
+                INPUT_NEW_STRENGTH_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
+                ],
+                INPUT_NEW_CARDIO_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
+                ],
+                CONFIRM_FINISH: [
+                    MessageHandler(filters.Regex('^(✅ Точно завершить|✏️ Скорректировать|🔙 Продолжить тренировку)$'), handle_finish_confirmation),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
+                ],
+                
+                # Модуль управления упражнениями
+                EXERCISES_MANAGEMENT: [
+                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), 
+                                  lambda u, c: (choose_exercise_type_mgmt(u, c) if u.message.text == '➕ Добавить упражнение' else
+                                               show_delete_exercise_menu(u, c) if u.message.text == '🗑️ Удалить упражнение' else
+                                               start(u, c))),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                ],
+                ADD_EXERCISE_TYPE_MGMT: [
+                    MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_mgmt),
+                ],
+                INPUT_NEW_STRENGTH_EXERCISE_MGMT: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_strength_exercise_mgmt),
+                ],
+                INPUT_NEW_CARDIO_EXERCISE_MGMT: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_cardio_exercise_mgmt),
+                ],
+                DELETE_EXERCISE_MENU: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise_handler),
+                ],
+                
+                # Модуль статистики
+                STATS_MENU: [
+                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), 
+                                  lambda u, c: (show_general_statistics(u, c) if u.message.text == '📊 Общая статистика' else
+                                               show_weekly_stats(u, c) if u.message.text == '📅 Текущая неделя' else
+                                               show_monthly_stats(u, c) if u.message.text == '📅 Текущий месяц' else
+                                               show_yearly_stats(u, c) if u.message.text == '📅 Текущий год' else
+                                               show_exercise_stats(u, c) if u.message.text == '📋 Статистика по упражнениям' else
+                                               start(u, c))),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                ],
+                
+                # Модуль замеров
+                MEASUREMENTS_HISTORY: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, show_measurements_history),
+                ],
+                
+                # Модуль экспорта
+                EXPORT_MENU: [
+                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), 
+                                  lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
+                                               start(u, c))),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
             },
             fallbacks=[
                 CommandHandler('start', start),
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
             ],
             allow_reentry=True
         )
@@ -177,6 +270,14 @@ def main():
     signal.signal(signal.SIGTERM, bot_manager.signal_handler)
     signal.signal(signal.SIGINT, bot_manager.signal_handler)
     
+    # ПРЯМАЯ проверка БД (без потока)
+    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
+    db_available = test_db_connection_quick()
+    if not db_available:
+        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
+    else:
+        print("Все функции бота доступны")
+
     # Настраиваем приложение
     application = setup_application()
     if not application:
@@ -211,11 +312,3 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
-
-
-
-
-
-
-
-
