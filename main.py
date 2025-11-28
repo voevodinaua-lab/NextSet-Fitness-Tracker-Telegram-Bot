@@ -126,21 +126,16 @@ def setup_application():
                 # Модуль тренировки
                 INPUT_MEASUREMENTS_CHOICE: [
                     MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
                 ],
                 INPUT_MEASUREMENTS: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
                     MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), 
-                                  lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
-                                               show_cardio_exercises(u, c) if u.message.text == '🏃 Кардио' else
-                                               choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
-                                               finish_training(u, c))),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
-                ],
-                CHOOSE_STRENGTH_EXERCISE: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
+                          lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
+                               show_cardio_exercises(u, c) if u.message.text == '🏃 Кардио' else
+                               choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
+                               finish_training(u, c))),
                 ],
                 INPUT_SETS: [
                     MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), 
@@ -321,6 +316,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
