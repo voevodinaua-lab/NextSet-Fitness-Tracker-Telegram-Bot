@@ -64,12 +64,13 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка выбора ввода замеров"""
     choice = update.message.text
+    print(f"DEBUG: handle_measurements_choice получил: '{choice}'")
     
     if choice == '🔙 Главное меню':
         # Очищаем данные тренировки при выходе
         context.user_data.pop('current_training', None)
         context.user_data.pop('training_id', None)
-        return MAIN_MENU
+        return await start(update, context)
     
     elif choice == '⏭️ Пропустить замеры':
         keyboard = [
@@ -86,13 +87,13 @@ async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAU
     elif choice == '📝 Ввести замеры':
         await update.message.reply_text(
             "Введите ваши замеры:\n"
-            "(например: вес 65кг, талия 70см, бедра 95см)\n"
-            "Или напишите 'пропустить' чтобы продолжить без замеров",
+            "(например: вес 65кг, талия 70см, бедра 95см)\n",
             reply_markup=ReplyKeyboardRemove()
         )
         return INPUT_MEASUREMENTS
     
     else:
+        # Этот блок теперь не должен вызываться, но на всякий случай
         await update.message.reply_text(
             "❌ Пожалуйста, используйте кнопки для выбора действия",
             reply_markup=ReplyKeyboardMarkup([
@@ -737,3 +738,4 @@ async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ], resize_keyboard=True)
     )
     return TRAINING_MENU
+
