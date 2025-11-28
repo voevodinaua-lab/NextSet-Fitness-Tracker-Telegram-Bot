@@ -32,7 +32,7 @@ def get_db_connection():
             user=url.username,
             password=url.password,
             database=url.path[1:],
-            ssl_context=ssl_context,  # Используем наш кастомный SSL контекст
+            ssl_context=ssl_context,
             timeout=10
         )
         return conn
@@ -125,6 +125,45 @@ def create_training(user_id):
     except Exception as e:
         logger.error(f"❌ Ошибка создания тренировки {user_id}: {e}")
         return None
+
+def delete_all_user_data(user_id):
+    """Удалить ВСЕ данные пользователя (очистка истории)"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        with conn.cursor() as cur:
+            # Удаляем упражнения из тренировок
+            cur.execute('''
+                DELETE FROM training_exercises 
+                WHERE training_id IN (
+                    SELECT training_id FROM trainings WHERE user_id = %s
+                )
+            ''', (user_id,))
+            
+            # Удаляем тренировки
+            cur.execute('''
+                DELETE FROM trainings WHERE user_id = %s
+            ''', (user_id,))
+            
+            # Удаляем пользовательские упражнения
+            cur.execute('''
+                DELETE FROM custom_exercises WHERE user_id = %s
+            ''', (user_id,))
+            
+            # Удаляем замеры
+            cur.execute('''
+                DELETE FROM user_measurements WHERE user_id = %s
+            ''', (user_id,))
+        
+        conn.commit()
+        conn.close()
+        logger.info(f"✅ Все данные пользователя {user_id} удалены")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Ошибка удаления данных пользователя {user_id}: {e}")
+        return False
 
 def save_training_measurements(training_id, measurements):
     """Сохранить замеры для тренировки"""
@@ -408,5 +447,4 @@ def get_measurements_history(user_id, limit=10):
         return measurements
     except Exception as e:
         logger.error(f"❌ Ошибка получения замеров {user_id}: {e}")
-
         return []
