@@ -738,4 +738,20 @@ async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ], resize_keyboard=True)
     )
     return TRAINING_MENU
-
+    
+async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка нераспознанных сообщений в меню тренировки"""
+    print(f"DEBUG: handle_training_menu_fallback получил: '{update.message.text}'")
+    
+    # Просто показываем меню тренировки снова
+    keyboard = [
+        ['💪 Силовые упражнения', '🏃 Кардио'],
+        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+    ]
+    
+    await update.message.reply_text(
+        "❌ Пожалуйста, используйте кнопки меню тренировки:\n\n"
+        "Выберите тип упражнения:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    return TRAINING_MENU
