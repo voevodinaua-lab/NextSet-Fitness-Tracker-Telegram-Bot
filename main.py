@@ -136,7 +136,10 @@ def setup_application():
                                show_cardio_exercises(u, c) if u.message.text == '🏃 Кардио' else
                                choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
                                finish_training(u, c))),
+                    # ДОБАВЬТЕ ЭТОТ ОБРАБОТЧИК:
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
                 ],
+
                 INPUT_SETS: [
                     MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), 
                                   lambda u, c: (add_another_set(u, c) if u.message.text == '✅ Добавить еще подходы' else
@@ -316,6 +319,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
