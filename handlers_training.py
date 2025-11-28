@@ -761,5 +761,46 @@ async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAU
         )
         return INPUT_MEASUREMENTS_CHOICE
 
+async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение замеров пользователя"""
+    user_id = update.message.from_user.id
+    measurements_text = update.message.text
+    training_id = context.user_data.get('training_id')
+    
+    print(f"🔧 DEBUG save_measurements: пользователь {user_id} ввел замеры: '{measurements_text}'")
+    
+    if training_id:
+        # Сохраняем замеры в тренировку
+        success = save_training_measurements(training_id, measurements_text)
+        if success:
+            print(f"✅ Замеры сохранены для тренировки {training_id}")
+        else:
+            print(f"❌ Не удалось сохранить замеры для тренировки {training_id}")
+    
+    # Также сохраняем в отдельную таблицу замеров
+    save_success = save_measurement(user_id, measurements_text)
+    
+    if save_success:
+        await update.message.reply_text(
+            f"✅ Замеры сохранены!\n\n📏 Ваши замеры: {measurements_text}",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        print(f"✅ Общие замеры пользователя {user_id} сохранены")
+    else:
+        await update.message.reply_text(
+            "❌ Не удалось сохранить замеры. Переходим к тренировке...",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        print(f"❌ Не удалось сохранить общие замеры пользователя {user_id}")
+    
+    return TRAINING_MENU
+
+
 
 
