@@ -81,22 +81,30 @@ def test_db_connection_quick():
 async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в меню тренировки"""
     text = update.message.text
-    print(f"DEBUG: TRAINING_MENU получил: '{text}'")
+    user_id = update.message.from_user.id
+    print(f"🚨 DEBUG TRAINING_MENU: пользователь {user_id} отправил '{text}'")
     
     if text == '💪 Силовые упражнения':
+        print(f"🔧 DEBUG: Переход к силовым упражнениям для пользователя {user_id}")
         return await show_strength_exercises(update, context)
     elif text == '🏃 Кардио':
+        print(f"🔧 DEBUG: Переход к кардио для пользователя {user_id}")
         return await show_cardio_exercises(update, context)
     elif text == '✏️ Добавить свое упражнение':
+        print(f"🔧 DEBUG: Добавление упражнения для пользователя {user_id}")
         return await choose_exercise_type(update, context)
     elif text == '🏁 Завершить тренировку':
+        print(f"🔧 DEBUG: Завершение тренировки для пользователя {user_id}")
         return await finish_training(update, context)
     else:
+        print(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
         return await handle_training_menu_fallback(update, context)
 
 async def handle_exercises_management_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в управлении упражнениями"""
     text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG EXERCISES_MANAGEMENT: пользователь {user_id} отправил '{text}'")
     
     if text == '➕ Добавить упражнение':
         return await choose_exercise_type_mgmt(update, context)
@@ -110,6 +118,8 @@ async def handle_exercises_management_choice(update: Update, context: ContextTyp
 async def handle_stats_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в меню статистики"""
     text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG STATS_MENU: пользователь {user_id} отправил '{text}'")
     
     if text == '📊 Общая статистика':
         return await show_general_statistics(update, context)
@@ -129,6 +139,8 @@ async def handle_stats_menu_choice(update: Update, context: ContextTypes.DEFAULT
 async def handle_export_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в меню экспорта"""
     text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG EXPORT_MENU: пользователь {user_id} отправил '{text}'")
     
     if text in ['📅 Текущий месяц', '📅 Все время']:
         return await export_data(update, context)
@@ -140,6 +152,8 @@ async def handle_export_menu_choice(update: Update, context: ContextTypes.DEFAUL
 async def handle_input_sets_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора при вводе подходов"""
     text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG INPUT_SETS: пользователь {user_id} отправил '{text}'")
     
     if text == '✅ Добавить еще подходы':
         return await add_another_set(update, context)
@@ -187,7 +201,7 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
                 ],
                 
-                # Модуль тренировки
+                # Модуль тренировки - ИСПРАВЛЕННЫЙ ПОРЯДОК!
                 INPUT_MEASUREMENTS_CHOICE: [
                     MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
@@ -196,8 +210,8 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
-                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    # Обрабатываем ВСЕ текстовые сообщения сначала
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_choice),
                 ],
                 CHOOSE_STRENGTH_EXERCISE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
@@ -236,8 +250,7 @@ def setup_application():
                 
                 # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
-                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), handle_exercises_management_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercises_management_choice),
                 ],
                 ADD_EXERCISE_TYPE_MGMT: [
                     MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
@@ -255,8 +268,7 @@ def setup_application():
                 
                 # Модуль статистики
                 STATS_MENU: [
-                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), handle_stats_menu_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_stats_menu_choice),
                 ],
                 
                 # Модуль замеров
@@ -266,8 +278,7 @@ def setup_application():
                 
                 # Модуль экспорта
                 EXPORT_MENU: [
-                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), handle_export_menu_choice),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_export_menu_choice),
                 ],
             },
             fallbacks=[
