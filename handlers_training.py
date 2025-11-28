@@ -11,6 +11,8 @@ from utils_constants import *
 
 logger = logging.getLogger(__name__)
 
+# ==================== ОСНОВНЫЕ ФУНКЦИИ ТРЕНИРОВКИ ====================
+
 async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Начало тренировки"""
     user = update.message.from_user
@@ -63,6 +65,262 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         print(f"🔧 DEBUG start_training: создана новая тренировка для {user_id}")
         return INPUT_MEASUREMENTS_CHOICE
+
+async def show_training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Показать меню тренировки"""
+    keyboard = [
+        ['💪 Силовые упражнения', '🏃 Кардио'],
+        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+    ]
+    
+    await update.message.reply_text(
+        "Выберите тип упражнения:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    return TRAINING_MENU
+
+async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Завершение тренировки - показ сводки"""
+    training_id = context.user_data.get('training_id')
+    
+    if not training_id:
+        await update.message.reply_text("❌ Нет активной тренировки.")
+        return MAIN_MENU
+    
+    # Получаем текущую тренировку с упражнениями
+    current_training = get_current_training(update.message.from_user.id)
+    
+    if not current_training or not current_training['exercises']:
+        await update.message.reply_text(
+            "❌ В тренировке нет упражнений. Добавьте хотя бы одно упражнение перед завершением.",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардиo'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        return TRAINING_MENU
+    
+    # Формируем сводку по тренировке
+    report = "📊 СВОДКА ПО ТРЕНИРОВКЕ\n\n"
+    report += f"📅 Дата: {current_training['date_start']}\n\n"
+    
+    if current_training['measurements']:
+        report += f"📏 Замеры: {current_training['measurements']}\n\n"
+    
+    report += "💪 Выполненные упражнения:\n\n"
+    
+    total_exercises = len(current_training['exercises'])
+    strength_count = 0
+    cardio_count = 0
+    
+    for i, exercise in enumerate(current_training['exercises'], 1):
+        if exercise.get('is_cardio'):
+            cardio_count += 1
+            report += f"🏃 {i}. {exercise['name']}\n"
+            report += f"   Детали: {exercise['details']}\n\n"
+        else:
+            strength_count += 1
+            report += f"💪 {i}. {exercise['name']}\n"
+            for j, set_data in enumerate(exercise['sets'], 1):
+                report += f"   {j}. {set_data['weight']}кг × {set_data['reps']}\n"
+            report += "\n"
+    
+    report += f"📊 Всего упражнений: {total_exercises}\n"
+    report += f"• Силовых: {strength_count}\n"
+    report += f"• Кардио: {cardio_count}\n"
+    
+    keyboard = [
+        ['✅ Точно завершить', '✏️ Скорректировать'],
+        ['🔙 Продолжить тренировку']
+    ]
+    
+    await update.message.reply_text(
+        report,
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    return CONFIRM_FINISH
+
+async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка подтверждения завершения тренировки"""
+    choice = update.message.text
+    training_id = context.user_data.get('training_id')
+    user_id = update.message.from_user.id
+    
+    if choice == '🔙 Продолжить тренировку':
+        return await show_training_menu(update, context)
+    
+    elif choice == '✏️ Скорректировать':
+        # TODO: Реализовать редактирование тренировки
+        await update.message.reply_text(
+            "Функция редактирования будет реализована в следующем обновлении.",
+            reply_markup=ReplyKeyboardMarkup([
+                ['✅ Точно завершить'],
+                ['🔙 Продолжить тренировку']
+            ], resize_keyboard=True)
+        )
+        return CONFIRM_FINISH
+    
+    elif choice == '✅ Точно завершить':
+        # Завершаем тренировку
+        success = finish_training(training_id)
+        
+        if success:
+            # Очищаем данные тренировки
+            context.user_data.pop('current_training', None)
+            context.user_data.pop('training_id', None)
+            context.user_data.pop('current_exercise', None)
+            context.user_data.pop('cardio_format', None)
+            
+            await update.message.reply_text(
+                "🏆 Тренировка завершена и сохранена! 🏆",
+                reply_markup=ReplyKeyboardMarkup([
+                    ['💪 Начать тренировку', '📊 История тренировок'],
+                    ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                    ['📤 Выгрузка данных', '❓ Помощь']
+                ], resize_keyboard=True)
+            )
+        else:
+            await update.message.reply_text("❌ Не удалось завершить тренировку.")
+        
+        return MAIN_MENU
+    
+    else:
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup([
+                ['✅ Точно завершить', '✏️ Скорректировать'],
+                ['🔙 Продолжить тренировку']
+            ], resize_keyboard=True)
+        )
+        return CONFIRM_FINISH
+
+# ==================== ОБРАБОТЧИКИ МЕНЮ ТРЕНИРОВКИ ====================
+
+async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора в меню тренировки"""
+    text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🚨🚨🚨 DEBUG TRAINING_MENU CHOICE: пользователь {user_id} отправил '{text}'")
+    
+    # Детальный debug
+    print(f"🔍 Текст сообщения: '{text}'")
+    print(f"🔍 Сравниваем с '💪 Силовые упражнения': {text == '💪 Силовые упражнения'}")
+    print(f"🔍 Сравниваем с '🏃 Кардио': {text == '🏃 Кардио'}")
+    print(f"🔍 Сравниваем с '✏️ Добавить свое упражнение': {text == '✏️ Добавить свое упражнение'}")
+    print(f"🔍 Сравниваем с '🏁 Завершить тренировку': {text == '🏁 Завершить тренировку'}")
+    
+    if text == '💪 Силовые упражнения':
+        print(f"🔧 DEBUG: Переход к силовым упражнениям для пользователя {user_id}")
+        return await show_strength_exercises(update, context)
+    elif text == '🏃 Кардио':
+        print(f"🔧 DEBUG: Переход к кардио для пользователя {user_id}")
+        return await show_cardio_exercises(update, context)
+    elif text == '✏️ Добавить свое упражнение':
+        print(f"🔧 DEBUG: Добавление упражнения для пользователя {user_id}")
+        return await choose_exercise_type(update, context)
+    elif text == '🏁 Завершить тренировку':
+        print(f"🔧 DEBUG: Завершение тренировки для пользователя {user_id}")
+        return await finish_training(update, context)
+    else:
+        print(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
+        return await handle_training_menu_fallback(update, context)
+
+async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка нераспознанных сообщений в меню тренировки"""
+    text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🚨🚨🚨 DEBUG TRAINING_MENU FALLBACK: пользователь {user_id} отправил '{text}'")
+    print(f"🔍 Fallback сработал для текста: '{text}'")
+    
+    # Просто показываем меню тренировки снова
+    keyboard = [
+        ['💪 Силовые упражнения', '🏃 Кардио'],
+        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+    ]
+    
+    await update.message.reply_text(
+        "❌ Пожалуйста, используйте кнопки меню тренировки:\n\n"
+        "Выберите тип упражнения:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    return TRAINING_MENU
+
+async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка выбора ввода замеров перед тренировкой"""
+    choice = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🔧 DEBUG INPUT_MEASUREMENTS_CHOICE: пользователь {user_id} выбрал '{choice}'")
+    
+    if choice == '📝 Ввести замеры':
+        await update.message.reply_text(
+            "📏 Введите ваши замеры в произвольном формате:\n"
+            "• Например: вес 65кг, талия 70см, грудь 95см\n"
+            "• Или: 65/70/95\n"
+            "• Или просто: 65кг",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return INPUT_MEASUREMENTS
+        
+    elif choice == '⏭️ Пропустить замеры':
+        print(f"🔧 DEBUG: пользователь {user_id} пропустил замеры, переходим к тренировке")
+        return await show_training_menu(update, context)
+        
+    elif choice == '🔙 Главное меню':
+        print(f"🔧 DEBUG: пользователь {user_id} вернулся в главное меню")
+        return await start(update, context)
+        
+    else:
+        # Если получен неизвестный текст, показываем клавиатуру снова
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора:",
+            reply_markup=ReplyKeyboardMarkup([
+                ['📝 Ввести замеры', '⏭️ Пропустить замеры'],
+                ['🔙 Главное меню']
+            ], resize_keyboard=True)
+        )
+        return INPUT_MEASUREMENTS_CHOICE
+
+async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Сохранение замеров пользователя"""
+    user_id = update.message.from_user.id
+    measurements_text = update.message.text
+    training_id = context.user_data.get('training_id')
+    
+    print(f"🔧 DEBUG save_measurements: пользователь {user_id} ввел замеры: '{measurements_text}'")
+    
+    if training_id:
+        # Сохраняем замеры в тренировку
+        success = save_training_measurements(training_id, measurements_text)
+        if success:
+            print(f"✅ Замеры сохранены для тренировки {training_id}")
+        else:
+            print(f"❌ Не удалось сохранить замеры для тренировки {training_id}")
+    
+    # Также сохраняем в отдельную таблицу замеров
+    save_success = save_measurement(user_id, measurements_text)
+    
+    if save_success:
+        await update.message.reply_text(
+            f"✅ Замеры сохранены!\n\n📏 Ваши замеры: {measurements_text}",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        print(f"✅ Общие замеры пользователя {user_id} сохранены")
+    else:
+        await update.message.reply_text(
+            "❌ Не удалось сохранить замеры. Переходим к тренировке...",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        print(f"❌ Не удалось сохранить общие замеры пользователя {user_id}")
+    
+    return TRAINING_MENU
+
+# ==================== СИЛОВЫЕ УПРАЖНЕНИЯ ====================
 
 async def show_strength_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать силовые упражнения"""
@@ -234,6 +492,8 @@ async def save_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     
     return TRAINING_MENU
 
+# ==================== КАРДИО УПРАЖНЕНИЯ ====================
+
 async def show_cardio_exercises(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать кардио упражнения"""
     user_id = update.message.from_user.id
@@ -395,189 +655,8 @@ async def save_cardio_exercise(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return INPUT_CARDIO_KM_H
 
-async def show_training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Показать меню тренировки"""
-    keyboard = [
-        ['💪 Силовые упражнения', '🏃 Кардио'],
-        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        "Выберите тип упражнения:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return TRAINING_MENU
+# ==================== ДОБАВЛЕНИЕ УПРАЖНЕНИЙ ====================
 
-async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Завершение тренировки - показ сводки"""
-    training_id = context.user_data.get('training_id')
-    
-    if not training_id:
-        await update.message.reply_text("❌ Нет активной тренировки.")
-        return MAIN_MENU
-    
-    # Получаем текущую тренировку с упражнениями
-    current_training = get_current_training(update.message.from_user.id)
-    
-    if not current_training or not current_training['exercises']:
-        await update.message.reply_text(
-            "❌ В тренировке нет упражнений. Добавьте хотя бы одно упражнение перед завершением.",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💪 Силовые упражнения', '🏃 Кардио'],
-                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-            ], resize_keyboard=True)
-        )
-        return TRAINING_MENU
-    
-    # Формируем сводку по тренировке
-    report = "📊 СВОДКА ПО ТРЕНИРОВКЕ\n\n"
-    report += f"📅 Дата: {current_training['date_start']}\n\n"
-    
-    if current_training['measurements']:
-        report += f"📏 Замеры: {current_training['measurements']}\n\n"
-    
-    report += "💪 Выполненные упражнения:\n\n"
-    
-    total_exercises = len(current_training['exercises'])
-    strength_count = 0
-    cardio_count = 0
-    
-    for i, exercise in enumerate(current_training['exercises'], 1):
-        if exercise.get('is_cardio'):
-            cardio_count += 1
-            report += f"🏃 {i}. {exercise['name']}\n"
-            report += f"   Детали: {exercise['details']}\n\n"
-        else:
-            strength_count += 1
-            report += f"💪 {i}. {exercise['name']}\n"
-            for j, set_data in enumerate(exercise['sets'], 1):
-                report += f"   {j}. {set_data['weight']}кг × {set_data['reps']}\n"
-            report += "\n"
-    
-    report += f"📊 Всего упражнений: {total_exercises}\n"
-    report += f"• Силовых: {strength_count}\n"
-    report += f"• Кардио: {cardio_count}\n"
-    
-    keyboard = [
-        ['✅ Точно завершить', '✏️ Скорректировать'],
-        ['🔙 Продолжить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        report,
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return CONFIRM_FINISH
-
-async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обработка подтверждения завершения тренировки"""
-    choice = update.message.text
-    training_id = context.user_data.get('training_id')
-    user_id = update.message.from_user.id
-    
-    if choice == '🔙 Продолжить тренировку':
-        return await show_training_menu(update, context)
-    
-    elif choice == '✏️ Скорректировать':
-        # TODO: Реализовать редактирование тренировки
-        await update.message.reply_text(
-            "Функция редактирования будет реализована в следующем обновлении.",
-            reply_markup=ReplyKeyboardMarkup([
-                ['✅ Точно завершить'],
-                ['🔙 Продолжить тренировку']
-            ], resize_keyboard=True)
-        )
-        return CONFIRM_FINISH
-    
-    elif choice == '✅ Точно завершить':
-        # Завершаем тренировку
-        success = finish_training(training_id)
-        
-        if success:
-            # Очищаем данные тренировки
-            context.user_data.pop('current_training', None)
-            context.user_data.pop('training_id', None)
-            context.user_data.pop('current_exercise', None)
-            context.user_data.pop('cardio_format', None)
-            
-            await update.message.reply_text(
-                "🏆 Тренировка завершена и сохранена! 🏆",
-                reply_markup=ReplyKeyboardMarkup([
-                    ['💪 Начать тренировку', '📊 История тренировок'],
-                    ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
-                    ['📤 Выгрузка данных', '❓ Помощь']
-                ], resize_keyboard=True)
-            )
-        else:
-            await update.message.reply_text("❌ Не удалось завершить тренировку.")
-        
-        return MAIN_MENU
-    
-    else:
-        await update.message.reply_text(
-            "❌ Пожалуйста, используйте кнопки для выбора действия",
-            reply_markup=ReplyKeyboardMarkup([
-                ['✅ Точно завершить', '✏️ Скорректировать'],
-                ['🔙 Продолжить тренировку']
-            ], resize_keyboard=True)
-        )
-        return CONFIRM_FINISH
-
-async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Показать историю тренировок"""
-    user_id = update.message.from_user.id
-    trainings = get_user_trainings(user_id, limit=5)
-    
-    if not trainings:
-        info_text = "💾 Все ваши будущие тренировки будут автоматически сохраняться в базе данных."
-        await update.message.reply_text(
-            f"📝 У вас пока нет завершенных тренировок.\n\n{info_text}",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💪 Начать тренировку', '📊 История тренировок'],
-                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
-                ['📤 Выгрузка данных', '❓ Помощь']
-            ], resize_keyboard=True)
-        )
-        return MAIN_MENU
-    
-    history_text = "📊 Последние тренировки:\n\n"
-    
-    for i, training in enumerate(trainings, 1):
-        history_text += f"🏋️ Тренировка #{i}\n"
-        history_text += f"📅 {training['date_start']}\n"
-        
-        strength_count = sum(1 for ex in training['exercises'] if not ex.get('is_cardio'))
-        cardio_count = sum(1 for ex in training['exercises'] if ex.get('is_cardio'))
-        
-        history_text += f"Упражнений: {len(training['exercises'])} (💪{strength_count} 🏃{cardio_count})\n"
-        
-        if training['comment']:
-            history_text += f"💬 {training['comment']}\n"
-        
-        history_text += "------\n"
-    
-    history_text += f"\n💾 Всего тренировок сохранено: {len(trainings)}\n"
-    
-    await update.message.reply_text(history_text)
-    return MAIN_MENU
-
-async def cancel_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Отмена текущего упражнения"""
-    exercise_name = context.user_data.get('current_exercise', {}).get('name', 'упражнение')
-    context.user_data.pop('current_exercise', None)
-    context.user_data.pop('cardio_format', None)
-    
-    await update.message.reply_text(
-        f"❌ {exercise_name} - удалено",
-        reply_markup=ReplyKeyboardMarkup([
-            ['💪 Силовые упражнения', '🏃 Кардио'],
-            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-        ], resize_keyboard=True)
-    )
-    
-    return TRAINING_MENU
-
-# Функции для добавления упражнений в режиме тренировки
 async def choose_exercise_type(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор типа упражнения для добавления"""
     keyboard = [
@@ -643,9 +722,64 @@ async def save_new_exercise_from_training(update: Update, context: ContextTypes.
     if exercise_type == STRENGTH_TYPE:
         return await show_strength_exercises(update, context)
     else:
-
         return await show_cardio_exercises(update, context)
+
+# ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+async def show_training_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Показать историю тренировок"""
+    user_id = update.message.from_user.id
+    trainings = get_user_trainings(user_id, limit=5)
+    
+    if not trainings:
+        info_text = "💾 Все ваши будущие тренировки будут автоматически сохраняться в базе данных."
+        await update.message.reply_text(
+            f"📝 У вас пока нет завершенных тренировок.\n\n{info_text}",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Начать тренировку', '📊 История тренировок'],
+                ['📝 Мои упражнения', '📈 Статистика', '📏 Мои замеры'],
+                ['📤 Выгрузка данных', '❓ Помощь']
+            ], resize_keyboard=True)
+        )
+        return MAIN_MENU
+    
+    history_text = "📊 Последние тренировки:\n\n"
+    
+    for i, training in enumerate(trainings, 1):
+        history_text += f"🏋️ Тренировка #{i}\n"
+        history_text += f"📅 {training['date_start']}\n"
         
+        strength_count = sum(1 for ex in training['exercises'] if not ex.get('is_cardio'))
+        cardio_count = sum(1 for ex in training['exercises'] if ex.get('is_cardio'))
+        
+        history_text += f"Упражнений: {len(training['exercises'])} (💪{strength_count} 🏃{cardio_count})\n"
+        
+        if training['comment']:
+            history_text += f"💬 {training['comment']}\n"
+        
+        history_text += "------\n"
+    
+    history_text += f"\n💾 Всего тренировок сохранено: {len(trainings)}\n"
+    
+    await update.message.reply_text(history_text)
+    return MAIN_MENU
+
+async def cancel_exercise(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Отмена текущего упражнения"""
+    exercise_name = context.user_data.get('current_exercise', {}).get('name', 'упражнение')
+    context.user_data.pop('current_exercise', None)
+    context.user_data.pop('cardio_format', None)
+    
+    await update.message.reply_text(
+        f"❌ {exercise_name} - удалено",
+        reply_markup=ReplyKeyboardMarkup([
+            ['💪 Силовые упражнения', '🏃 Кардио'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ], resize_keyboard=True)
+    )
+    
+    return TRAINING_MENU
+
 async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Продолжение текущей тренировки"""
     user_id = update.message.from_user.id
@@ -678,27 +812,7 @@ async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ], resize_keyboard=True)
     )
     return TRAINING_MENU
-    
-async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка нераспознанных сообщений в меню тренировки"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🚨🚨🚨 DEBUG TRAINING_MENU FALLBACK: пользователь {user_id} отправил '{text}'")
-    print(f"🔍 Fallback сработал для текста: '{text}'")
-    
-    # Просто показываем меню тренировки снова
-    keyboard = [
-        ['💪 Силовые упражнения', '🏃 Кардио'],
-        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        "❌ Пожалуйста, используйте кнопки меню тренировки:\n\n"
-        "Выберите тип упражнения:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return TRAINING_MENU
-    
+
 async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Упрощенный обработчик меню тренировки"""
     text = update.message.text
@@ -728,113 +842,3 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
-
-async def handle_measurements_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обработка выбора ввода замеров перед тренировкой"""
-    choice = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🔧 DEBUG INPUT_MEASUREMENTS_CHOICE: пользователь {user_id} выбрал '{choice}'")
-    
-    if choice == '📝 Ввести замеры':
-        await update.message.reply_text(
-            "📏 Введите ваши замеры в произвольном формате:\n"
-            "• Например: вес 65кг, талия 70см, грудь 95см\n"
-            "• Или: 65/70/95\n"
-            "• Или просто: 65кг",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        return INPUT_MEASUREMENTS
-        
-    elif choice == '⏭️ Пропустить замеры':
-        print(f"🔧 DEBUG: пользователь {user_id} пропустил замеры, переходим к тренировке")
-        return await show_training_menu(update, context)
-        
-    elif choice == '🔙 Главное меню':
-        print(f"🔧 DEBUG: пользователь {user_id} вернулся в главное меню")
-        return await start(update, context)
-        
-    else:
-        # Если получен неизвестный текст, показываем клавиатуру снова
-        await update.message.reply_text(
-            "❌ Пожалуйста, используйте кнопки для выбора:",
-            reply_markup=ReplyKeyboardMarkup([
-                ['📝 Ввести замеры', '⏭️ Пропустить замеры'],
-                ['🔙 Главное меню']
-            ], resize_keyboard=True)
-        )
-        return INPUT_MEASUREMENTS_CHOICE
-
-async def save_measurements(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Сохранение замеров пользователя"""
-    user_id = update.message.from_user.id
-    measurements_text = update.message.text
-    training_id = context.user_data.get('training_id')
-    
-    print(f"🔧 DEBUG save_measurements: пользователь {user_id} ввел замеры: '{measurements_text}'")
-    
-    if training_id:
-        # Сохраняем замеры в тренировку
-        success = save_training_measurements(training_id, measurements_text)
-        if success:
-            print(f"✅ Замеры сохранены для тренировки {training_id}")
-        else:
-            print(f"❌ Не удалось сохранить замеры для тренировки {training_id}")
-    
-    # Также сохраняем в отдельную таблицу замеров
-    save_success = save_measurement(user_id, measurements_text)
-    
-    if save_success:
-        await update.message.reply_text(
-            f"✅ Замеры сохранены!\n\n📏 Ваши замеры: {measurements_text}",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💪 Силовые упражнения', '🏃 Кардио'],
-                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-            ], resize_keyboard=True)
-        )
-        print(f"✅ Общие замеры пользователя {user_id} сохранены")
-    else:
-        await update.message.reply_text(
-            "❌ Не удалось сохранить замеры. Переходим к тренировке...",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💪 Силовые упражнения', '🏃 Кардио'],
-                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-            ], resize_keyboard=True)
-        )
-        print(f"❌ Не удалось сохранить общие замеры пользователя {user_id}")
-    
-    return TRAINING_MENU
-    
-async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора в меню тренировки"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🚨🚨🚨 DEBUG TRAINING_MENU CHOICE: пользователь {user_id} отправил '{text}'")
-    
-    # Детальный debug
-    print(f"🔍 Текст сообщения: '{text}'")
-    print(f"🔍 Сравниваем с '💪 Силовые упражнения': {text == '💪 Силовые упражнения'}")
-    print(f"🔍 Сравниваем с '🏃 Кардио': {text == '🏃 Кардио'}")
-    print(f"🔍 Сравниваем с '✏️ Добавить свое упражнение': {text == '✏️ Добавить свое упражнение'}")
-    print(f"🔍 Сравниваем с '🏁 Завершить тренировку': {text == '🏁 Завершить тренировку'}")
-    
-    if text == '💪 Силовые упражнения':
-        print(f"🔧 DEBUG: Переход к силовым упражнениям для пользователя {user_id}")
-        return await show_strength_exercises(update, context)
-    elif text == '🏃 Кардио':
-        print(f"🔧 DEBUG: Переход к кардио для пользователя {user_id}")
-        return await show_cardio_exercises(update, context)
-    elif text == '✏️ Добавить свое упражнение':
-        print(f"🔧 DEBUG: Добавление упражнения для пользователя {user_id}")
-        return await choose_exercise_type(update, context)
-    elif text == '🏁 Завершить тренировку':
-        print(f"🔧 DEBUG: Завершение тренировки для пользователя {user_id}")
-        return await finish_training(update, context)
-    else:
-        print(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
-        return await handle_training_menu_fallback(update, context)
-
-
-
-
-
-
