@@ -681,7 +681,10 @@ async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
 async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка нераспознанных сообщений в меню тренировки"""
-    print(f"DEBUG: handle_training_menu_fallback получил: '{update.message.text}'")
+    text = update.message.text
+    user_id = update.message.from_user.id
+    print(f"🚨🚨🚨 DEBUG TRAINING_MENU FALLBACK: пользователь {user_id} отправил '{text}'")
+    print(f"🔍 Fallback сработал для текста: '{text}'")
     
     # Просто показываем меню тренировки снова
     keyboard = [
@@ -805,7 +808,14 @@ async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFA
     """Обработка выбора в меню тренировки"""
     text = update.message.text
     user_id = update.message.from_user.id
-    print(f"🚨 DEBUG TRAINING_MENU: пользователь {user_id} отправил '{text}'")
+    print(f"🚨🚨🚨 DEBUG TRAINING_MENU CHOICE: пользователь {user_id} отправил '{text}'")
+    
+    # Детальный debug
+    print(f"🔍 Текст сообщения: '{text}'")
+    print(f"🔍 Сравниваем с '💪 Силовые упражнения': {text == '💪 Силовые упражнения'}")
+    print(f"🔍 Сравниваем с '🏃 Кардио': {text == '🏃 Кардио'}")
+    print(f"🔍 Сравниваем с '✏️ Добавить свое упражнение': {text == '✏️ Добавить свое упражнение'}")
+    print(f"🔍 Сравниваем с '🏁 Завершить тренировку': {text == '🏁 Завершить тренировку'}")
     
     if text == '💪 Силовые упражнения':
         print(f"🔧 DEBUG: Переход к силовым упражнениям для пользователя {user_id}")
@@ -822,6 +832,7 @@ async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFA
     else:
         print(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
         return await handle_training_menu_fallback(update, context)
+
 
 
 
