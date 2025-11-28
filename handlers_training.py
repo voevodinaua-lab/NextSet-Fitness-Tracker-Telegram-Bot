@@ -702,4 +702,38 @@ async def save_new_exercise_from_training(update: Update, context: ContextTypes.
     if exercise_type == STRENGTH_TYPE:
         return await show_strength_exercises(update, context)
     else:
+
         return await show_cardio_exercises(update, context)
+        
+async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Продолжение текущей тренировки"""
+    user_id = update.message.from_user.id
+    current_training = get_current_training(user_id)
+    
+    if not current_training:
+        await update.message.reply_text(
+            "❌ Текущая тренировка не найдена. Начинаем новую.",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💪 Силовые упражнения', '🏃 Кардио'],
+                ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+            ], resize_keyboard=True)
+        )
+        return TRAINING_MENU
+    
+    # Сохраняем training_id в context для использования в других функциях
+    context.user_data['current_training_id'] = current_training['training_id']
+    
+    training_info = f"""
+🏃‍♂️ Продолжаем тренировку от {current_training['date_start']}
+
+Уже добавлено упражнений: {len(current_training['exercises'])}
+    """
+    
+    await update.message.reply_text(
+        training_info,
+        reply_markup=ReplyKeyboardMarkup([
+            ['💪 Силовые упражнения', '🏃 Кардиo'],
+            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+        ], resize_keyboard=True)
+    )
+    return TRAINING_MENU
