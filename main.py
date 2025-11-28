@@ -77,6 +77,79 @@ def test_db_connection_quick():
         print(f"Ошибка подключения к базе данных: {e}")
         return False
 
+# Асинхронные функции-обертки для обработки состояний
+async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора в меню тренировки"""
+    text = update.message.text
+    print(f"DEBUG: TRAINING_MENU получил: '{text}'")
+    
+    if text == '💪 Силовые упражнения':
+        return await show_strength_exercises(update, context)
+    elif text == '🏃 Кардио':
+        return await show_cardio_exercises(update, context)
+    elif text == '✏️ Добавить свое упражнение':
+        return await choose_exercise_type(update, context)
+    elif text == '🏁 Завершить тренировку':
+        return await finish_training(update, context)
+    else:
+        return await handle_training_menu_fallback(update, context)
+
+async def handle_exercises_management_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора в управлении упражнениями"""
+    text = update.message.text
+    
+    if text == '➕ Добавить упражнение':
+        return await choose_exercise_type_mgmt(update, context)
+    elif text == '🗑️ Удалить упражнение':
+        return await show_delete_exercise_menu(update, context)
+    elif text == '🔙 Главное меню':
+        return await start(update, context)
+    else:
+        return await handle_main_menu(update, context)
+
+async def handle_stats_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора в меню статистики"""
+    text = update.message.text
+    
+    if text == '📊 Общая статистика':
+        return await show_general_statistics(update, context)
+    elif text == '📅 Текущая неделя':
+        return await show_weekly_stats(update, context)
+    elif text == '📅 Текущий месяц':
+        return await show_monthly_stats(update, context)
+    elif text == '📅 Текущий год':
+        return await show_yearly_stats(update, context)
+    elif text == '📋 Статистика по упражнениям':
+        return await show_exercise_stats(update, context)
+    elif text == '🔙 Главное меню':
+        return await start(update, context)
+    else:
+        return await handle_main_menu(update, context)
+
+async def handle_export_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора в меню экспорта"""
+    text = update.message.text
+    
+    if text in ['📅 Текущий месяц', '📅 Все время']:
+        return await export_data(update, context)
+    elif text == '🔙 Главное меню':
+        return await start(update, context)
+    else:
+        return await handle_main_menu(update, context)
+
+async def handle_input_sets_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка выбора при вводе подходов"""
+    text = update.message.text
+    
+    if text == '✅ Добавить еще подходы':
+        return await add_another_set(update, context)
+    elif text == '💾 Сохранить упражнение':
+        return await save_exercise(update, context)
+    elif text == '❌ Отменить упражнение':
+        return await cancel_exercise(update, context)
+    else:
+        return await handle_set_input(update, context)
+
 def setup_application():
     """Настройка и создание приложения"""
     print("НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
@@ -94,25 +167,25 @@ def setup_application():
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
              
-        # Создаем ConversationHandler
+        # Создаем ConversationHandler с правильными асинхронными обработчиками
         conv_handler = ConversationHandler(
-    	    entry_points=[
-       		CommandHandler('start', start),
-        	MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
-        	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
-    	    ],
+            entry_points=[
+                CommandHandler('start', start),
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
+            ],
             states={
-        	INACTIVE: [
-            	MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку|🗑️ Очистить историю)$'), handle_clear_data_choice),
-            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
-        	],
-        	MAIN_MENU: [
-            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
-        	],
-        	CLEAR_DATA_CONFIRM: [
-            	MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
-            	MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
-        	],
+                INACTIVE: [
+                    MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку|🗑️ Очистить историю)$'), handle_clear_data_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
+                ],
+                MAIN_MENU: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                ],
+                CLEAR_DATA_CONFIRM: [
+                    MessageHandler(filters.Regex('^(✅ Да, удалить все данные|❌ Отмена)$'), handle_clear_data_confirmation),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+                ],
                 
                 # Модуль тренировки
                 INPUT_MEASUREMENTS_CHOICE: [
@@ -123,21 +196,14 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
-                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), 
-                                  lambda u, c: (show_strength_exercises(u, c) if u.message.text == '💪 Силовые упражнения' else
-                                               show_cardio_exercises(u, c) if u.message.text == '🏃 Кардио' else
-                                               choose_exercise_type(u, c) if u.message.text == '✏️ Добавить свое упражнение' else
-                                               finish_training(u, c))),
+                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 CHOOSE_STRENGTH_EXERCISE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
                 ],
                 INPUT_SETS: [
-                    MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), 
-                                  lambda u, c: (add_another_set(u, c) if u.message.text == '✅ Добавить еще подходы' else
-                                               save_exercise(u, c) if u.message.text == '💾 Сохранить упражнение' else
-                                               cancel_exercise(u, c))),
+                    MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), handle_input_sets_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
                 ],
                 CHOOSE_CARDIO_EXERCISE: [
@@ -170,10 +236,7 @@ def setup_application():
                 
                 # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
-                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), 
-                                  lambda u, c: (choose_exercise_type_mgmt(u, c) if u.message.text == '➕ Добавить упражнение' else
-                                               show_delete_exercise_menu(u, c) if u.message.text == '🗑️ Удалить упражнение' else
-                                               start(u, c))),
+                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), handle_exercises_management_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 ADD_EXERCISE_TYPE_MGMT: [
@@ -192,13 +255,7 @@ def setup_application():
                 
                 # Модуль статистики
                 STATS_MENU: [
-                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), 
-                                  lambda u, c: (show_general_statistics(u, c) if u.message.text == '📊 Общая статистика' else
-                                               show_weekly_stats(u, c) if u.message.text == '📅 Текущая неделя' else
-                                               show_monthly_stats(u, c) if u.message.text == '📅 Текущий месяц' else
-                                               show_yearly_stats(u, c) if u.message.text == '📅 Текущий год' else
-                                               show_exercise_stats(u, c) if u.message.text == '📋 Статистика по упражнениям' else
-                                               start(u, c))),
+                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), handle_stats_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 
@@ -209,9 +266,7 @@ def setup_application():
                 
                 # Модуль экспорта
                 EXPORT_MENU: [
-                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), 
-                                  lambda u, c: (export_data(u, c) if u.message.text in ['📅 Текущий месяц', '📅 Все время'] else
-                                               start(u, c))),
+                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), handle_export_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
             },
