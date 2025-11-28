@@ -120,7 +120,7 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_simple),
                 ],
                 CLEAR_DATA_CONFIRM: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
                 ],
             },
             fallbacks=[
@@ -177,14 +177,6 @@ def main():
     signal.signal(signal.SIGTERM, bot_manager.signal_handler)
     signal.signal(signal.SIGINT, bot_manager.signal_handler)
     
-    # ПРЯМАЯ проверка БД (без потока)
-    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
-    db_available = test_db_connection_quick()
-    if not db_available:
-        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
-    else:
-        print("Все функции бота доступны")
-
     # Настраиваем приложение
     application = setup_application()
     if not application:
@@ -219,6 +211,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
