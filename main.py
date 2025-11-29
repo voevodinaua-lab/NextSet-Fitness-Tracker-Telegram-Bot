@@ -185,9 +185,8 @@ def setup_application():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
                 ],
                 TRAINING_MENU: [
-                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
-                    # Потом все остальные текстовые сообщения (fallback)
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
+                # УПРОЩЕННАЯ ВЕРСИЯ - обрабатываем ВСЕ текстовые сообщения
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_choice),
                 ],
                 CHOOSE_STRENGTH_EXERCISE: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
@@ -226,7 +225,6 @@ def setup_application():
                 
                 # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
-                    MessageHandler(filters.Regex('^(➕ Добавить упражнение|🗑️ Удалить упражнение|🔙 Главное меню)$'), handle_exercises_management_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 ADD_EXERCISE_TYPE_MGMT: [
@@ -245,7 +243,6 @@ def setup_application():
                 
                 # Модуль статистики
                 STATS_MENU: [
-                    MessageHandler(filters.Regex('^(📊 Общая статистика|📅 Текущая неделя|📅 Текущий месяц|📅 Текущий год|📋 Статистика по упражнениям|🔙 Главное меню)$'), handle_stats_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
                 ],
                 
@@ -256,7 +253,6 @@ def setup_application():
                 
                 # Модуль экспорта
                 EXPORT_MENU: [
-                    MessageHandler(filters.Regex('^(📅 Текущий месяц|📅 Все время|🔙 Главное меню)$'), handle_export_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu)
                 ],
             },
@@ -357,6 +353,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
