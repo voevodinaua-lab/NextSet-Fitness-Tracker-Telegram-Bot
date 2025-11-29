@@ -197,6 +197,7 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
 # ==================== ОБРАБОТЧИКИ МЕНЮ ТРЕНИРОВКИ ====================
 
 async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"DEBUG: Получен текст: '{text}'")
     """Обработка выбора в меню тренировки"""
     text = update.message.text
     user_id = update.message.from_user.id
@@ -849,5 +850,6 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
