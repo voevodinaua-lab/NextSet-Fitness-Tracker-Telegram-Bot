@@ -40,7 +40,10 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "Выберите тип упражнения:",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
-        print(f"🔧 DEBUG start_training: продолжаем существующую тренировку для {user_id}")
+        
+        # ОТЛАДКА: Какое состояние возвращаем
+        await update.message.reply_text(f"🔍 DEBUG: start_training возвращает TRAINING_MENU = {TRAINING_MENU}")
+        print(f"🔧 DEBUG start_training: продолжаем существующую тренировку для {user_id}, возвращаем {TRAINING_MENU}")
         return TRAINING_MENU
     else:
         # Создаем новую тренировку
@@ -63,21 +66,11 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "(например: вес 65кг, талия 70см, бедра 95см)",
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
-        print(f"🔧 DEBUG start_training: создана новая тренировка для {user_id}")
+        
+        # ОТЛАДКА
+        await update.message.reply_text(f"🔍 DEBUG: start_training возвращает INPUT_MEASUREMENTS_CHOICE = {INPUT_MEASUREMENTS_CHOICE}")
+        print(f"🔧 DEBUG start_training: создана новая тренировка для {user_id}, возвращаем {INPUT_MEASUREMENTS_CHOICE}")
         return INPUT_MEASUREMENTS_CHOICE
-
-async def show_training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Показать меню тренировки"""
-    keyboard = [
-        ['💪 Силовые упражнения', '🏃 Кардио'],
-        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-    ]
-    
-    await update.message.reply_text(
-        "Выберите тип упражнения:",
-        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    )
-    return TRAINING_MENU
 
 async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Завершение тренировки - показ сводки"""
@@ -884,6 +877,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
