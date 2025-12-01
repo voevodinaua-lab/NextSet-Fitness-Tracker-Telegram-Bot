@@ -44,6 +44,9 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # ОТЛАДКА: Какое состояние возвращаем
         await update.message.reply_text(f"🔍 DEBUG: start_training возвращает TRAINING_MENU = {TRAINING_MENU}")
         print(f"🔧 DEBUG start_training: продолжаем существующую тренировку для {user_id}, возвращаем {TRAINING_MENU}")
+        
+        # ВАЖНО: Добавьте отладку состояния
+        print(f"🔧 DEBUG: context.user_data до возврата: {context.user_data}")
         return TRAINING_MENU
     else:
         # Создаем новую тренировку
@@ -868,6 +871,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
