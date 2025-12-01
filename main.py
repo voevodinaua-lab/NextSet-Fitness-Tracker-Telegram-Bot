@@ -225,7 +225,7 @@ def setup_application():
                 
                 # Модуль управления упражнениями
                 EXERCISES_MANAGEMENT: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercises_management_choice),
                 ],
                 ADD_EXERCISE_TYPE_MGMT: [
                     MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
@@ -243,7 +243,7 @@ def setup_application():
                 
                 # Модуль статистики
                 STATS_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_stats_menu_choice),
                 ],
                 
                 # Модуль замеров
@@ -253,7 +253,7 @@ def setup_application():
                 
                 # Модуль экспорта
                 EXPORT_MENU: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu)
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_export_menu_choice)
                 ],
             },
             fallbacks=[
@@ -353,6 +353,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
