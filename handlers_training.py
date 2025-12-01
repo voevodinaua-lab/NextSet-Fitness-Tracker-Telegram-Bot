@@ -87,7 +87,7 @@ async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text(
             "❌ В тренировке нет упражнений. Добавьте хотя бы одно упражнение перед завершением.",
             reply_markup=ReplyKeyboardMarkup([
-                ['💪 Силовые упражнения', '🏃 Кардиo'],
+                ['💪 Силовые упражнения', '🏃 Кардио'],
                 ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
             ], resize_keyboard=True)
         )
@@ -132,6 +132,19 @@ async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
     return CONFIRM_FINISH
+
+async def show_training_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Показать меню тренировки"""
+    keyboard = [
+        ['💪 Силовые упражнения', '🏃 Кардио'],
+        ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
+    ]
+    
+    await update.message.reply_text(
+        "Выберите тип упражнения:",
+        reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    )
+    return TRAINING_MENU
 
 async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка подтверждения завершения тренировки"""
@@ -188,7 +201,6 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
         return CONFIRM_FINISH
 
 # ==================== ОБРАБОТЧИКИ МЕНЮ ТРЕНИРОВКИ ====================
-
 async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в меню тренировки"""
     text = update.message.text
@@ -840,6 +852,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
