@@ -192,62 +192,25 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
 async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка выбора в меню тренировки"""
     text = update.message.text
-    user_id = update.message.from_user.id
     
-    # ПРИНУДИТЕЛЬНАЯ ОТЛАДКА ЧЕРЕЗ СООБЩЕНИЯ
-    debug_info = (
-        f"🔍 DEBUG TRAINING_MENU CHOICE:\n"
-        f"Текст: '{text}'\n"
-        f"Длина: {len(text)}\n"
-        f"Коды символов: {[ord(c) for c in text]}\n"
-        f"Тип: {type(text)}\n\n"
-        f"Сравнения:\n"
-        f"• '💪 Силовые упражнения': {text == '💪 Силовые упражнения'}\n"
-        f"• '🏃 Кардио': {text == '🏃 Кардио'}\n"
-        f"• '✏️ Добавить свое упражнение': {text == '✏️ Добавить свое упражнение'}\n"
-        f"• '🏁 Завершить тренировку': {text == '🏁 Завершить тренировку'}\n\n"
-        f"Содержит:\n"
-        f"• 'Силовые': {'Силовые' in text}\n"
-        f"• 'Кардио': {'Кардио' in text}\n"
-        f"• 'Добавить': {'Добавить' in text}\n"
-        f"• 'Завершить': {'Завершить' in text}"
-    )
+    # ПРОСТАЯ ОТЛАДКА
+    await update.message.reply_text(f"✅ handle_training_menu_choice вызван! Текст: '{text}'")
     
-    # Отправляем debug информацию пользователю
-    await update.message.reply_text(debug_info)
-    
-    # Проверяем все возможные варианты текста
-    if text == '💪 Силовые упражнения':
-        await update.message.reply_text("✅ DEBUG: Распознано '💪 Силовые упражнения' - переходим к силовым!")
+    # ПРОСТЫЕ ПРОВЕРКИ
+    if 'Силовые' in text:
+        await update.message.reply_text("Переходим к силовым упражнениям...")
         return await show_strength_exercises(update, context)
-    elif text == '🏃 Кардио':
-        await update.message.reply_text("✅ DEBUG: Распознано '🏃 Кардио' - переходим к кардио!")
+    elif 'Кардио' in text:
+        await update.message.reply_text("Переходим к кардио...")
         return await show_cardio_exercises(update, context)
-    elif text == '✏️ Добавить свое упражнение':
-        await update.message.reply_text("✅ DEBUG: Распознано '✏️ Добавить свое упражнение' - добавляем упражнение!")
+    elif 'Добавить' in text:
+        await update.message.reply_text("Добавляем упражнение...")
         return await choose_exercise_type(update, context)
-    elif text == '🏁 Завершить тренировку':
-        await update.message.reply_text("✅ DEBUG: Распознано '🏁 Завершить тренировку' - завершаем тренировку!")
+    elif 'Завершить' in text:
+        await update.message.reply_text("Завершаем тренировку...")
         return await finish_training(update, context)
-    
-    # Проверяем варианты без эмодзи (на всякий случай)
-    elif text == 'Силовые упражнения':
-        await update.message.reply_text("✅ DEBUG: Распознано 'Силовые упражнения' (без эмодзи) - переходим к силовым!")
-        return await show_strength_exercises(update, context)
-    elif text == 'Кардио':
-        await update.message.reply_text("✅ DEBUG: Распознано 'Кардио' (без эмодзи) - переходим к кардио!")
-        return await show_cardio_exercises(update, context)
-    elif text == 'Добавить свое упражнение':
-        await update.message.reply_text("✅ DEBUG: Распознано 'Добавить свое упражнение' (без эмодзи) - добавляем упражнение!")
-        return await choose_exercise_type(update, context)
-    elif text == 'Завершить тренировку':
-        await update.message.reply_text("✅ DEBUG: Распознано 'Завершить тренировку' (без эмодзи) - завершаем тренировку!")
-        return await finish_training(update, context)
-    
-    # Если ни один вариант не подошел
     else:
-        await update.message.reply_text(f"⚠️ DEBUG: Неизвестная команда в TRAINING_MENU: '{text}'")
-        await update.message.reply_text("⚠️ DEBUG: Переход в fallback!")
+        await update.message.reply_text(f"Не распознано: '{text}'")
         return await handle_training_menu_fallback(update, context)
 
 async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -877,6 +840,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
