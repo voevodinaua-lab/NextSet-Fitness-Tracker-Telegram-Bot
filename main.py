@@ -4,6 +4,8 @@ import sys
 import signal
 import threading
 from dotenv import load_dotenv
+import sys 
+sys.stdout = sys.stderr
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from telegram import Update
@@ -353,6 +355,7 @@ if __name__ == '__main__':
     else:
         print("Не удалось запустить бота")
         sys.exit(1)
+
 
 
 
