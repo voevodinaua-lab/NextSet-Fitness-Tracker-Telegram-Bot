@@ -205,65 +205,20 @@ async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFA
     """Обработка выбора в меню тренировки"""
     text = update.message.text
     
-    # ДЕТАЛЬНАЯ ОТЛАДКА СРАЗУ
-    print(f"\n=== DEBUG handle_training_menu_choice НАЧАЛО ===")
-    print(f"Получен текст: '{text}'")
-    print(f"Содержит 'Силовые'? {'Да' if 'Силовые' in text else 'Нет'}")
-    print(f"Содержит '💪'? {'Да' if '💪' in text else 'Нет'}")
+    # ВРЕМЕННО: просто показываем отладочное сообщение и возвращаем состояние
+    await update.message.reply_text(f"DEBUG: Получено '{text}' в TRAINING_MENU")
     
-    # ПРОСТАЯ ОТЛАДКА для пользователя
-    await update.message.reply_text(f"✅ handle_training_menu_choice вызван! Текст: '{text}'")
-    
-    try:
-        # ПРОСТЫЕ ПРОВЕРКИ
-        if 'Силовые' in text:
-            print("🔧 Ветка: Силовые упражнения")
-            await update.message.reply_text("Переходим к силовым упражнениям...")
-            result = await show_strength_exercises(update, context)
-            print(f"🔧 show_strength_exercises вернула: {result}")
-            return result
-        
-        elif 'Кардио' in text:
-            print("🔧 Ветка: Кардио")
-            await update.message.reply_text("Переходим к кардио...")
-            result = await show_cardio_exercises(update, context)
-            print(f"🔧 show_cardio_exercises вернула: {result}")
-            return result
-        
-        elif 'Добавить' in text:
-            print("🔧 Ветка: Добавить упражнение")
-            await update.message.reply_text("Добавляем упражнение...")
-            result = await choose_exercise_type(update, context)
-            print(f"🔧 choose_exercise_type вернула: {result}")
-            return result
-        
-        elif 'Завершить' in text:
-            print("🔧 Ветка: Завершить тренировку")
-            await update.message.reply_text("Завершаем тренировку...")
-            result = await finish_training(update, context)
-            print(f"🔧 finish_training вернула: {result}")
-            return result
-        
-        else:
-            print(f"🔧 Не распознано, вызываю fallback")
-            await update.message.reply_text(f"Не распознано: '{text}'")
-            result = await handle_training_menu_fallback(update, context)
-            print(f"🔧 handle_training_menu_fallback вернула: {result}")
-            return result
-            
-    except Exception as e:
-        print(f"🚨 ОШИБКА в handle_training_menu_choice: {e}")
-        import traceback
-        traceback.print_exc()
-        # В случае ошибки показываем меню снова
-        keyboard = [
-            ['💪 Силовые упражнения', '🏃 Кардио'],
-            ['✏️ Добавить свое упражнение', '🏁 Завершить тренировку']
-        ]
+    if text == '💪 Силовые упражнения':
+        await update.message.reply_text("DEBUG: Перехожу к CHOOSE_STRENGTH_EXERCISE")
+        # Просто показываем сообщение и возвращаем состояние БЕЗ вызова других функций
         await update.message.reply_text(
-            f"Произошла ошибка: {e}\nВозвращаюсь в меню тренировки...",
-            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+            "Тест: вы выбрали силовые упражнения",
+            reply_markup=ReplyKeyboardMarkup([['Тестовая кнопка']], resize_keyboard=True)
         )
+        return CHOOSE_STRENGTH_EXERCISE
+    
+    else:
+        await update.message.reply_text(f"DEBUG: Не распознано '{text}'")
         return TRAINING_MENU
 
 async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -913,6 +868,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
