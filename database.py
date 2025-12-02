@@ -1,6 +1,7 @@
 import os
 import logging
 import pg8000
+import json
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -195,6 +196,11 @@ def add_exercise_to_training(training_id, exercise_data):
     try:
         with conn.cursor() as cur:
             if exercise_data['type'] == STRENGTH_TYPE:
+                # СЕРИАЛИЗУЕМ список в JSON строку
+                import json
+                sets_data = exercise_data.get('sets', [])
+                sets_json = json.dumps(sets_data)  # ← ВАЖНО!
+                
                 cur.execute('''
                     INSERT INTO training_exercises 
                     (training_id, name, type, sets)
@@ -203,7 +209,7 @@ def add_exercise_to_training(training_id, exercise_data):
                     training_id, 
                     exercise_data['name'], 
                     STRENGTH_TYPE,
-                    exercise_data.get('sets', [])
+                    sets_json  # ← передаем JSON строку
                 ))
             else:  # CARDIO
                 cur.execute('''
@@ -448,3 +454,4 @@ def get_measurements_history(user_id, limit=10):
     except Exception as e:
         logger.error(f"❌ Ошибка получения замеров {user_id}: {e}")
         return []
+
