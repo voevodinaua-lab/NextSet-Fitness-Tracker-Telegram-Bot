@@ -205,40 +205,38 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
 
 # ==================== ОБРАБОТЧИКИ МЕНЮ ТРЕНИРОВКИ ====================
 async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обработка выбора в меню тренировки"""
+    """Обработка выбора в меню тренировки - УПРОЩЕННАЯ ВЕРСИЯ"""
     text = update.message.text
+    user_id = update.message.from_user.id
     
-    # ОТЛАДКА
-    print(f"\n=== DEBUG handle_training_menu_choice ВЫЗВАНА! ===")
+    print(f"\n=== handle_training_menu_choice ===")
+    print(f"Пользователь: {user_id}")
     print(f"Текст: '{text}'")
-    print(f"Пользователь: {update.message.from_user.id}")
+    print(f"Данные контекста: {context.user_data}")
     
-    # Простая отладка для пользователя
-    await update.message.reply_text(f"✅ Получено: '{text}'")
-    
-    # ПРОСТЫЕ ПРОВЕРКИ
+    # ПРОСТАЯ ЛОГИКА БЕЗ СЛОЖНЫХ ПРОВЕРОК
     if text == '💪 Силовые упражнения':
-        print("Выбраны силовые упражнения")
-        await update.message.reply_text("Переходим к силовым упражнениям...")
+        print("-> show_strength_exercises")
+        await update.message.reply_text("Загружаю силовые упражнения...")
         return await show_strength_exercises(update, context)
-    
+        
     elif text == '🏃 Кардио':
-        print("Выбрано кардио")
-        await update.message.reply_text("Переходим к кардио...")
+        print("-> show_cardio_exercises") 
+        await update.message.reply_text("Загружаю кардио упражнения...")
         return await show_cardio_exercises(update, context)
-    
+        
     elif text == '✏️ Добавить свое упражнение':
-        print("Выбрано добавление упражнения")
-        await update.message.reply_text("Добавляем упражнение...")
+        print("-> choose_exercise_type")
+        await update.message.reply_text("Добавляем новое упражнение...")
         return await choose_exercise_type(update, context)
-    
+        
     elif text == '🏁 Завершить тренировку':
-        print("Выбрано завершение тренировки")
+        print("-> finish_training")
         await update.message.reply_text("Завершаем тренировку...")
         return await finish_training(update, context)
-    
+        
     else:
-        print(f"Неожиданный текст: {text}")
+        print(f"-> fallback (неизвестный текст: {text})")
         return await handle_training_menu_fallback(update, context)
 
 async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -888,6 +886,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
