@@ -12,7 +12,8 @@ from handlers_training import (
     handle_training_menu_fallback, show_strength_exercises,
     show_cardio_exercises, choose_exercise_type, finish_training,
     handle_strength_exercise_selection, handle_set_input,
-    handle_cardio_exercise_selection, handle_finish_confirmation
+    handle_cardio_exercise_selection, handle_finish_confirmation,
+    save_exercise, cancel_exercise
 )
 
 # Настройка логирования
@@ -51,12 +52,11 @@ def main():
                 await update.message.reply_text("Введите следующие подходы...")
                 return INPUT_SETS
             elif text == '💾 Сохранить упражнение':
-                # ВАЖНО: Показываем меню тренировки перед возвратом!
-                await update.message.reply_text("Упражнение сохранено!")
-                return await show_training_menu(update, context)
+                # Сохраняем упражнение в БД
+                return await save_exercise(update, context)
             elif text == '❌ Отменить упражнение':
-                await update.message.reply_text("Упражнение отменено")
-                return await show_training_menu(update, context)
+                # Отменяем упражнение
+                return await cancel_exercise(update, context)
             else:
                 return await handle_set_input(update, context)
         
