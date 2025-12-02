@@ -170,8 +170,11 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
         return CONFIRM_FINISH
     
     elif choice == '✅ Точно завершить':
-        # Завершаем тренировку
-        success = finish_training(training_id)
+        # ЯВНО импортируем функцию из database.py
+        from database import finish_training as db_finish_training
+        
+        # Завершаем тренировку через БД функцию
+        success = db_finish_training(training_id)
         
         if success:
             # Очищаем данные тренировки
@@ -192,6 +195,16 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
             await update.message.reply_text("❌ Не удалось завершить тренировку.")
         
         return MAIN_MENU
+    
+    else:
+        await update.message.reply_text(
+            "❌ Пожалуйста, используйте кнопки для выбора действия",
+            reply_markup=ReplyKeyboardMarkup([
+                ['✅ Точно завершить', '✏️ Скорректировать'],
+                ['🔙 Продолжить тренировку']
+            ], resize_keyboard=True)
+        )
+        return CONFIRM_FINISH
     
     else:
         await update.message.reply_text(
@@ -886,6 +899,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
