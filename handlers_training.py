@@ -75,7 +75,7 @@ async def start_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         print(f"🔧 DEBUG start_training: создана новая тренировка для {user_id}, возвращаем {INPUT_MEASUREMENTS_CHOICE}")
         return INPUT_MEASUREMENTS_CHOICE
 
-async def finish_training(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def show_finish_summary(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Завершение тренировки - показ сводки"""
     training_id = context.user_data.get('training_id')
     
@@ -196,17 +196,7 @@ async def handle_finish_confirmation(update: Update, context: ContextTypes.DEFAU
         
         return MAIN_MENU
     
-    else:
-        await update.message.reply_text(
-            "❌ Пожалуйста, используйте кнопки для выбора действия",
-            reply_markup=ReplyKeyboardMarkup([
-                ['✅ Точно завершить', '✏️ Скорректировать'],
-                ['🔙 Продолжить тренировку']
-            ], resize_keyboard=True)
-        )
-        return CONFIRM_FINISH
-    
-    else:
+    else:  # ← ОДИН раз, а не два!
         await update.message.reply_text(
             "❌ Пожалуйста, используйте кнопки для выбора действия",
             reply_markup=ReplyKeyboardMarkup([
@@ -246,7 +236,7 @@ async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFA
     elif text == '🏁 Завершить тренировку':
         print("-> finish_training")
         await update.message.reply_text("Завершаем тренировку...")
-        return await finish_training(update, context)
+        return await show_finish_summary(update, context)
         
     else:
         print(f"-> fallback (неизвестный текст: {text})")
@@ -886,7 +876,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
         return await choose_exercise_type(update, context)
     elif text == '🏁 Завершить тренировку':
         await update.message.reply_text("✅ Завершаем тренировку!")
-        return await finish_training(update, context)
+        return await show_finish_summary(update, context)
     else:
         # Показываем меню снова
         keyboard = [
@@ -899,6 +889,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
