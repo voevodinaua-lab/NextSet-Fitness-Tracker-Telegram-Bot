@@ -1,17 +1,10 @@
 import os
 import logging
-import sys
-import signal
-import threading
 from dotenv import load_dotenv
-import sys 
-sys.stdout = sys.stderr
-
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from telegram import Update
 
-# Импортируем наши модули
-from database import get_db_connection
+# Импорты состояний и обработчиков
 from utils_constants import *
 from handlers_common import *
 from handlers_training import *
@@ -30,262 +23,75 @@ logger = logging.getLogger(__name__)
 # Загружаем переменные окружения
 load_dotenv()
 
-class BotManager:
-    def __init__(self):
-        self.application = None
-        self.shutdown_requested = False
-        
-    def signal_handler(self, signum, frame):
-        """Обработчик сигналов для graceful shutdown"""
-        print(f"Получен сигнал {signum}, останавливаем бота...")
-        self.shutdown_requested = True
-        if self.application:
-            print("Завершаем работу бота...")
-            # Используем асинхронную остановку
-            import asyncio
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    loop.create_task(self._shutdown())
-                else:
-                    asyncio.run(self._shutdown())
-            except:
-                # Если возникли проблемы с event loop, просто выходим
-                sys.exit(0)
-    
-    async def _shutdown(self):
-        """Асинхронное завершение работы"""
-        await self.application.stop()
-        await self.application.shutdown()
-
-def test_db_connection_quick():
-    """Быстрая проверка подключения к базе с подробным логированием"""
-    try:
-        print("Пытаемся подключиться к базе данных...")
-        conn = get_db_connection()
-        if conn:
-            print("Соединение с БД установлено, выполняем тестовый запрос...")
-            with conn.cursor() as cur:
-                cur.execute('SELECT 1')
-                result = cur.fetchone()
-                print(f"Тестовый запрос выполнен успешно: {result}")
-            conn.close()
-            print("База данных полностью доступна!")
-            return True
-        else:
-            print("Не удалось получить соединение с БД")
-            return False
-    except Exception as e:
-        print(f"Ошибка подключения к базе данных: {e}")
-        return False
-
-# Асинхронные функции-обертки для обработки состояний
-async def handle_exercises_management_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора в управлении упражнениями"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🔧 DEBUG EXERCISES_MANAGEMENT: пользователь {user_id} отправил '{text}'")
-    
-    if text == '➕ Добавить упражнение':
-        return await choose_exercise_type_mgmt(update, context)
-    elif text == '🗑️ Удалить упражнение':
-        return await show_delete_exercise_menu(update, context)
-    elif text == '🔙 Главное меню':
-        return await start(update, context)
-    else:
-        return await handle_main_menu(update, context)
-
-async def handle_stats_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора в меню статистики"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🔧 DEBUG STATS_MENU: пользователь {user_id} отправил '{text}'")
-    
-    if text == '📊 Общая статистика':
-        return await show_general_statistics(update, context)
-    elif text == '📅 Текущая неделя':
-        return await show_weekly_stats(update, context)
-    elif text == '📅 Текущий месяц':
-        return await show_monthly_stats(update, context)
-    elif text == '📅 Текущий год':
-        return await show_yearly_stats(update, context)
-    elif text == '📋 Статистика по упражнениям':
-        return await show_exercise_stats(update, context)
-    elif text == '🔙 Главное меню':
-        return await start(update, context)
-    else:
-        return await handle_main_menu(update, context)
-
-async def handle_export_menu_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора в меню экспорта"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🔧 DEBUG EXPORT_MENU: пользователь {user_id} отправил '{text}'")
-    
-    if text in ['📅 Текущий месяц', '📅 Все время']:
-        return await export_data(update, context)
-    elif text == '🔙 Главное меню':
-        return await start(update, context)
-    else:
-        return await handle_main_menu(update, context)
-
-async def handle_input_sets_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка выбора при вводе подходов"""
-    text = update.message.text
-    user_id = update.message.from_user.id
-    print(f"🔧 DEBUG INPUT_SETS: пользователь {user_id} отправил '{text}'")
-    
-    if text == '✅ Добавить еще подходы':
-        return await add_another_set(update, context)
-    elif text == '💾 Сохранить упражнение':
-        return await save_exercise(update, context)
-    elif text == '❌ Отменить упражнение':
-        return await cancel_exercise(update, context)
-    else:
-        return await handle_set_input(update, context)
-
-def setup_application():
-    """Настройка и создание приложения"""
-    print("НАСТРОЙКА ПРИЛОЖЕНИЯ БОТА...")
+def main():
+    """Основная функция запуска"""
+    print("=" * 50)
+    print("ЗАПУСК FITNESS TRACKER BOT")
+    print("=" * 50)
     
     # Проверка токена
     TOKEN = os.getenv('BOT_TOKEN')
     if not TOKEN:
         print("ОШИБКА: BOT_TOKEN не установлен!")
-        print("Убедитесь, что переменная BOT_TOKEN установлена в Render")
         return None
 
-    print("Токен получен, создаем приложение...")
-    
     try:
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
-             
-        # Создаем ConversationHandler с правильными асинхронными обработчиками
+        
+        # Создаем УПРОЩЕННЫЙ ConversationHandler
         conv_handler = ConversationHandler(
-    entry_points=[
-        CommandHandler('start', start),
-        MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_unknown_message)
-    ],
-    states={
-        INACTIVE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_choice),
-        ],
-        MAIN_MENU: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
-        ],
-        CLEAR_DATA_CONFIRM: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_clear_data_confirmation),
-        ],
-        
-        # Модуль тренировки - ИСПРАВЛЕННЫЙ ПОРЯДОК!
-        INPUT_MEASUREMENTS_CHOICE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
-        ],
-        INPUT_MEASUREMENTS: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),
-        ],
-        TRAINING_MENU: [
-            # ИЗМЕНЕНО: Конкретный фильтр для кнопок тренировки
-            MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
-            # Fallback для любых других сообщений
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
-        ],
-        CHOOSE_STRENGTH_EXERCISE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
-        ],
-        INPUT_SETS: [
-            MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), handle_input_sets_choice),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
-        ],
-        CHOOSE_CARDIO_EXERCISE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_exercise_selection),
-        ],
-        CARDIO_TYPE_SELECTION: [
-            MessageHandler(filters.Regex('^(⏱️ Мин/Метры|🚀 Км/Час|🔙 Назад к кардио)$'), handle_cardio_type_selection),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_type_selection),
-        ],
-        INPUT_CARDIO_MIN_METERS: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_min_meters_input),
-        ],
-        INPUT_CARDIO_KM_H: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_km_h_input),
-        ],
-        ADD_EXERCISE_TYPE: [
-            MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке)$'), add_custom_exercise_from_training),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_from_training),
-        ],
-        INPUT_NEW_STRENGTH_EXERCISE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
-        ],
-        INPUT_NEW_CARDIO_EXERCISE: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
-        ],
-        CONFIRM_FINISH: [
-            MessageHandler(filters.Regex('^(✅ Точно завершить|✏️ Скорректировать|🔙 Продолжить тренировку)$'), handle_finish_confirmation),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
-        ],
-        
-        # Модуль управления упражнениями
-        EXERCISES_MANAGEMENT: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercises_management_choice),
-        ],
-        ADD_EXERCISE_TYPE_MGMT: [
-            MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_mgmt),
-        ],
-        INPUT_NEW_STRENGTH_EXERCISE_MGMT: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_strength_exercise_mgmt),
-        ],
-        INPUT_NEW_CARDIO_EXERCISE_MGMT: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_cardio_exercise_mgmt),
-        ],
-        DELETE_EXERCISE_MENU: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, delete_exercise_handler),
-        ],
-        
-        # Модуль статистики
-        STATS_MENU: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_stats_menu_choice),
-        ],
-        
-        # Модуль замеров
-        MEASUREMENTS_HISTORY: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, show_measurements_history),
-        ],
-        
-        # Модуль экспорта
-        EXPORT_MENU: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, handle_export_menu_choice)
-        ],
-    },
-    fallbacks=[
-        CommandHandler('start', start),
-        MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
-    ],
-    allow_reentry=True
-)
+            entry_points=[
+                CommandHandler('start', start),
+                MessageHandler(filters.Regex('^(🚀 Начать|🚀 Продолжить|🏃‍♂️ Продолжить тренировку|🆕 Начать новую тренировку)$'), start_from_button),
+            ],
+            states={
+                MAIN_MENU: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_main_menu),
+                ],
+                
+                # Модуль тренировки - ОСНОВНОЙ FLOW
+                TRAINING_MENU: [
+                    MessageHandler(filters.Regex('^(💪 Силовые упражнения)$'), handle_training_menu_choice),
+                    MessageHandler(filters.Regex('^(🏃 Кардио)$'), handle_training_menu_choice),
+                    MessageHandler(filters.Regex('^(✏️ Добавить свое упражнение)$'), handle_training_menu_choice),
+                    MessageHandler(filters.Regex('^(🏁 Завершить тренировку)$'), handle_training_menu_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
+                ],
+                
+                CHOOSE_STRENGTH_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_strength_exercise_selection),
+                ],
+                
+                INPUT_SETS: [
+                    MessageHandler(filters.Regex('^(✅ Добавить еще подходы|💾 Сохранить упражнение|❌ Отменить упражнение)$'), handle_input_sets_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_set_input),
+                ],
+                
+                CHOOSE_CARDIO_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_exercise_selection),
+                ],
+                
+                # ОСТАЛЬНЫЕ СОСТОЯНИЯ ПОКА УПРОЩАЕМ
+                CONFIRM_FINISH: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
+                ],
+            },
+            fallbacks=[
+                CommandHandler('start', start),
+                MessageHandler(filters.Regex('^🚀 Начать$'), start_from_button),
+            ],
+            allow_reentry=True
+        )
         
         application.add_handler(conv_handler)
-
-        # Простые команды для теста
-        async def test_cmd(update, context):
-            await update.message.reply_text("Бот работает! Используйте кнопки меню для навигации.")
-
-        async def status_cmd(update, context):
-            conn = get_db_connection()
-            if conn:
-                status = "База данных доступна"
-                conn.close()
-            else:
-                status = "База данных недоступна"
-            
-            await update.message.reply_text(f"Статус бота:\n{status}")
-
-        application.add_handler(CommandHandler("test", test_cmd))
-        application.add_handler(CommandHandler("status", status_cmd))
-
+        
+        # Простые команды
+        async def test(update, context):
+            await update.message.reply_text("Бот работает!")
+        
+        application.add_handler(CommandHandler("test", test))
+        
         print("Приложение настроено успешно!")
         return application
         
@@ -294,77 +100,13 @@ def setup_application():
         print(f"Критическая ошибка: {e}")
         return None
 
-def main():
-    """Основная функция запуска"""
-    print("=" * 50)
-    print("ЗАПУСК FITNESS TRACKER BOT")
-    print("=" * 50)
-    
-    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
-    db_available = test_db_connection_quick()
-    if not db_available:
-        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
-    else:
-        print("Все функции бота доступны")
-    
-    
-    # Создаем менеджер бота
-    bot_manager = BotManager()
-    
-    # Регистрируем обработчики сигналов
-    signal.signal(signal.SIGTERM, bot_manager.signal_handler)
-    signal.signal(signal.SIGINT, bot_manager.signal_handler)
-    
-    # ПРЯМАЯ проверка БД (без потока)
-    print("ПРЯМАЯ ПРОВЕРКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ...")
-    db_available = test_db_connection_quick()
-    if not db_available:
-        print("ВНИМАНИЕ: РАБОТАЕМ БЕЗ БАЗЫ ДАННЫХ - некоторые функции могут быть недоступны")
-    else:
-        print("Все функции бота доступны")
-
-    # Настраиваем приложение
-    application = setup_application()
-    if not application:
-        print("Не удалось создать приложение")
-        return None
-        
-    bot_manager.application = application
-    return application
-
 if __name__ == '__main__':
     app = main()
     if app:
-        try:
-            print("ЗАПУСКАЕМ БОТА...")
-            print("Используйте /test или /status для проверки")
-            print("Бот готов к работе!")
-            
-            # Запускаем polling с улучшенными настройками
-            app.run_polling(
-                drop_pending_updates=True,
-                allowed_updates=Update.ALL_TYPES,
-                close_loop=False
-            )
-            
-        except Exception as e:
-            print(f"Ошибка при запуске бота: {e}")
-            print("Попытка перезапуска через 30 секунд...")
-            import time
-            time.sleep(30)
-            # Попытка перезапуска
-            os.execv(sys.executable, ['python'] + sys.argv)
+        print("Бот запущен и готов к работе!")
+        app.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES
+        )
     else:
         print("Не удалось запустить бота")
-        sys.exit(1)
-
-
-
-
-
-
-
-
-
-
-
