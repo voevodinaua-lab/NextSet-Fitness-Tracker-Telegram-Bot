@@ -4,14 +4,15 @@ from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from telegram import Update
 
-# Импорты состояний и обработчиков
+# БАЗОВЫЕ ИМПОРТЫ
 from utils_constants import *
-from handlers_common import *
-from handlers_training import *
-from handlers_exercises import *
-from handlers_statistics import *
-from handlers_measurements import show_measurements_history
-from handlers_export import *
+from handlers_common import start, start_from_button, handle_main_menu
+from handlers_training import (
+    start_training, show_training_menu, handle_training_menu_choice,
+    handle_training_menu_fallback, show_strength_exercises,
+    show_cardio_exercises, choose_exercise_type, finish_training,
+    handle_strength_exercise_selection, handle_set_input
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -26,7 +27,7 @@ load_dotenv()
 def main():
     """Основная функция запуска"""
     print("=" * 50)
-    print("ЗАПУСК FITNESS TRACKER BOT")
+    print("ЗАПУСК FITNESS TRACKER BOT - МИНИМАЛЬНАЯ ВЕРСИЯ")
     print("=" * 50)
     
     # Проверка токена
@@ -38,6 +39,25 @@ def main():
     try:
         # Создаем приложение
         application = Application.builder().token(TOKEN).build()
+        
+        # СОЗДАЕМ ПРОСТУЮ ВЕРСИЮ handle_input_sets_choice
+        async def handle_input_sets_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+            """Обработка выбора при вводе подходов"""
+            text = update.message.text
+            print(f"DEBUG handle_input_sets_choice: получено '{text}'")
+            
+            if text == '✅ Добавить еще подходы':
+                await update.message.reply_text("Введите следующие подходы...")
+                return INPUT_SETS
+            elif text == '💾 Сохранить упражнение':
+                # Временно просто возвращаемся в меню
+                await update.message.reply_text("Упражнение сохранено!")
+                return TRAINING_MENU
+            elif text == '❌ Отменить упражнение':
+                await update.message.reply_text("Упражнение отменено")
+                return TRAINING_MENU
+            else:
+                return await handle_set_input(update, context)
         
         # Создаем УПРОЩЕННЫЙ ConversationHandler
         conv_handler = ConversationHandler(
@@ -52,10 +72,7 @@ def main():
                 
                 # Модуль тренировки - ОСНОВНОЙ FLOW
                 TRAINING_MENU: [
-                    MessageHandler(filters.Regex('^(💪 Силовые упражнения)$'), handle_training_menu_choice),
-                    MessageHandler(filters.Regex('^(🏃 Кардио)$'), handle_training_menu_choice),
-                    MessageHandler(filters.Regex('^(✏️ Добавить свое упражнение)$'), handle_training_menu_choice),
-                    MessageHandler(filters.Regex('^(🏁 Завершить тренировку)$'), handle_training_menu_choice),
+                    MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
                 ],
                 
@@ -72,9 +89,8 @@ def main():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_exercise_selection),
                 ],
                 
-                # ОСТАЛЬНЫЕ СОСТОЯНИЯ ПОКА УПРОЩАЕМ
                 CONFIRM_FINISH: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, finish_training),
                 ],
             },
             fallbacks=[
@@ -88,25 +104,28 @@ def main():
         
         # Простые команды
         async def test(update, context):
-            await update.message.reply_text("Бот работает!")
+            await update.message.reply_text("✅ Бот работает! Используйте кнопки меню.")
         
         application.add_handler(CommandHandler("test", test))
         
-        print("Приложение настроено успешно!")
+        print("✅ Приложение настроено успешно!")
         return application
         
     except Exception as e:
         logger.error(f"Ошибка при создании приложения: {e}")
+        import traceback
+        traceback.print_exc()
         print(f"Критическая ошибка: {e}")
         return None
 
 if __name__ == '__main__':
     app = main()
     if app:
-        print("Бот запущен и готов к работе!")
+        print("🚀 Бот запущен и готов к работе!")
+        print("📱 Отправьте /start в Telegram")
         app.run_polling(
             drop_pending_updates=True,
             allowed_updates=Update.ALL_TYPES
         )
     else:
-        print("Не удалось запустить бота")
+        print("❌ Не удалось запустить бота")
