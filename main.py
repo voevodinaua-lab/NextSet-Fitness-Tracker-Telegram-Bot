@@ -43,20 +43,20 @@ def main():
         
         # СОЗДАЕМ ПРОСТУЮ ВЕРСИЮ handle_input_sets_choice
         async def handle_input_sets_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Обработка выбора при вводе подходов"""
+            """Обработка выбора при вводе подходов"""
             text = update.message.text
             print(f"DEBUG handle_input_sets_choice: получено '{text}'")
-    
+            
             if text == '✅ Добавить еще подходы':
                 await update.message.reply_text("Введите следующие подходы...")
                 return INPUT_SETS
             elif text == '💾 Сохранить упражнение':
-        # ВАЖНО: Показываем меню тренировки перед возвратом!
+                # ВАЖНО: Показываем меню тренировки перед возвратом!
                 await update.message.reply_text("Упражнение сохранено!")
-                return await show_training_menu(update, context)  # ← ИСПРАВЛЕНО!
+                return await show_training_menu(update, context)
             elif text == '❌ Отменить упражнение':
                 await update.message.reply_text("Упражнение отменено")
-                return await show_training_menu(update, context)  # ← ИСПРАВЛЕНО!
+                return await show_training_menu(update, context)
             else:
                 return await handle_set_input(update, context)
         
@@ -130,4 +130,3 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
-
