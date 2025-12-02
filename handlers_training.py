@@ -208,21 +208,38 @@ async def handle_training_menu_choice(update: Update, context: ContextTypes.DEFA
     """Обработка выбора в меню тренировки"""
     text = update.message.text
     
-    # ВРЕМЕННО: просто показываем отладочное сообщение и возвращаем состояние
-    await update.message.reply_text(f"DEBUG: Получено '{text}' в TRAINING_MENU")
+    # ОТЛАДКА
+    print(f"\n=== DEBUG handle_training_menu_choice ВЫЗВАНА! ===")
+    print(f"Текст: '{text}'")
+    print(f"Пользователь: {update.message.from_user.id}")
     
+    # Простая отладка для пользователя
+    await update.message.reply_text(f"✅ Получено: '{text}'")
+    
+    # ПРОСТЫЕ ПРОВЕРКИ
     if text == '💪 Силовые упражнения':
-        await update.message.reply_text("DEBUG: Перехожу к CHOOSE_STRENGTH_EXERCISE")
-        # Просто показываем сообщение и возвращаем состояние БЕЗ вызова других функций
-        await update.message.reply_text(
-            "Тест: вы выбрали силовые упражнения",
-            reply_markup=ReplyKeyboardMarkup([['Тестовая кнопка']], resize_keyboard=True)
-        )
-        return CHOOSE_STRENGTH_EXERCISE
+        print("Выбраны силовые упражнения")
+        await update.message.reply_text("Переходим к силовым упражнениям...")
+        return await show_strength_exercises(update, context)
+    
+    elif text == '🏃 Кардио':
+        print("Выбрано кардио")
+        await update.message.reply_text("Переходим к кардио...")
+        return await show_cardio_exercises(update, context)
+    
+    elif text == '✏️ Добавить свое упражнение':
+        print("Выбрано добавление упражнения")
+        await update.message.reply_text("Добавляем упражнение...")
+        return await choose_exercise_type(update, context)
+    
+    elif text == '🏁 Завершить тренировку':
+        print("Выбрано завершение тренировки")
+        await update.message.reply_text("Завершаем тренировку...")
+        return await finish_training(update, context)
     
     else:
-        await update.message.reply_text(f"DEBUG: Не распознано '{text}'")
-        return TRAINING_MENU
+        print(f"Неожиданный текст: {text}")
+        return await handle_training_menu_fallback(update, context)
 
 async def handle_training_menu_fallback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка нераспознанных сообщений в меню тренировки"""
@@ -871,6 +888,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
