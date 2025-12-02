@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ConversationHandler, ContextTypes
 from telegram import Update
 
 # БАЗОВЫЕ ИМПОРТЫ
@@ -11,7 +11,8 @@ from handlers_training import (
     start_training, show_training_menu, handle_training_menu_choice,
     handle_training_menu_fallback, show_strength_exercises,
     show_cardio_exercises, choose_exercise_type, finish_training,
-    handle_strength_exercise_selection, handle_set_input
+    handle_strength_exercise_selection, handle_set_input,
+    handle_cardio_exercise_selection
 )
 
 # Настройка логирования
