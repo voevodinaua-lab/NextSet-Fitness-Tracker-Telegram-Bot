@@ -94,6 +94,9 @@ def main():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
                 ],
                 
+                INPUT_NEW_STRENGTH_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
+                ],
                 CONFIRM_FINISH: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
                 ],
@@ -134,4 +137,5 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
