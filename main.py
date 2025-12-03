@@ -13,7 +13,7 @@ from handlers_training import (
     show_cardio_exercises, choose_exercise_type, finish_training,
     handle_strength_exercise_selection, handle_set_input,
     handle_cardio_exercise_selection, handle_finish_confirmation,
-    save_exercise, cancel_exercise
+    save_exercise, cancel_exercise, save_new_exercise_from_training
 )
 
 # Настройка логирования
@@ -90,6 +90,10 @@ def main():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_cardio_exercise_selection),
                 ],
                 
+                INPUT_NEW_CARDIO_EXERCISE: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_new_exercise_from_training),
+                ],
+                
                 CONFIRM_FINISH: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
                 ],
@@ -130,3 +134,4 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
