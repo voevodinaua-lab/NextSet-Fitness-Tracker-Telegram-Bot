@@ -563,6 +563,9 @@ async def handle_cardio_exercise_selection(update: Update, context: ContextTypes
     exercise_name = update.message.text
     
     if exercise_name == '✏️ Добавить кардио упражнение':
+        
+        context.user_data['adding_exercise_type'] = CARDIO_TYPE
+        
         await update.message.reply_text(
             "Введите название нового кардио упражнения:",
             reply_markup=ReplyKeyboardRemove()
@@ -889,6 +892,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
