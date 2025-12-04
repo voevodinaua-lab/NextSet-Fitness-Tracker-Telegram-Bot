@@ -37,6 +37,29 @@ async def show_exercises_management(update: Update, context: ContextTypes.DEFAUL
     )
     return EXERCISES_MANAGEMENT
 
+async def handle_exercises_management_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Обработка выбора в управлении упражнениями"""
+    text = update.message.text
+    
+    print(f"\n=== DEBUG handle_exercises_management_choice ===")
+    print(f"Получен текст: '{text}'")
+    
+    if text == '➕ Добавить упражнение':
+        print("-> choose_exercise_type_mgmt")
+        return await choose_exercise_type_mgmt(update, context)
+    
+    elif text == '🗑️ Удалить упражнение':
+        print("-> show_delete_exercise_menu")
+        return await show_delete_exercise_menu(update, context)
+    
+    elif text == '🔙 Главное меню':
+        print("-> start")
+        return await start(update, context)
+    
+    else:
+        print("-> show_exercises_management (fallback)")
+        return await show_exercises_management(update, context
+                                              
 async def choose_exercise_type_mgmt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор типа упражнения для добавления (из управления)"""
     keyboard = [
@@ -222,4 +245,5 @@ async def delete_exercise_handler(update: Update, context: ContextTypes.DEFAULT_
             ], resize_keyboard=True)
         )
     
+
     return EXERCISES_MANAGEMENT
