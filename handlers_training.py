@@ -369,6 +369,7 @@ async def show_strength_exercises(update: Update, context: ContextTypes.DEFAULT_
             row = all_strength_exercises[i:i+2]
             keyboard.append(row)
         
+        keyboard.append(['✏️ Добавить силовое упражнение'])
         keyboard.append(['🔙 Назад к тренировке'])
         
         await update.message.reply_text(
@@ -376,8 +377,6 @@ async def show_strength_exercises(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         
-        print(f"=== DEBUG show_strength_exercises КОНЕЦ ===")
-        print(f"Возвращаю состояние: {CHOOSE_STRENGTH_EXERCISE}")
         return CHOOSE_STRENGTH_EXERCISE
         
     except Exception as e:
@@ -398,6 +397,16 @@ async def show_strength_exercises(update: Update, context: ContextTypes.DEFAULT_
 async def handle_strength_exercise_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка выбора силового упражнения"""
     exercise_name = update.message.text
+
+    # ОБРАБОТКА ДОБАВЛЕНИЯ НОВОГО УПРАЖНЕНИЯ
+    if exercise_name == '✏️ Добавить силовое упражнение':
+        context.user_data['adding_exercise_type'] = STRENGTH_TYPE
+        
+        await update.message.reply_text(
+            "Введите название нового силового упражнения:",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        return INPUT_NEW_STRENGTH_EXERCISE
     
     if exercise_name == '🔙 Назад к тренировке':
         return await show_training_menu(update, context)
@@ -896,6 +905,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
