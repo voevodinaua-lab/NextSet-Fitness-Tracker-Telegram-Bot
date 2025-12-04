@@ -8,16 +8,25 @@ from telegram import Update
 from utils_constants import *
 from handlers_common import start, start_from_button, handle_main_menu
 from handlers_training import (
-    start_training, show_training_menu, handle_training_menu_choice,
-    handle_training_menu_fallback, show_strength_exercises,
-    show_cardio_exercises, choose_exercise_type, finish_training,
-    handle_strength_exercise_selection, handle_set_input,
-    handle_cardio_exercise_selection, handle_finish_confirmation,
-    save_exercise, cancel_exercise, save_new_exercise_from_training, handle_cardio_type_selection,
-    handle_cardio_min_meters_input, show_exercises_management, handle_exercises_management_choice,
-    show_delete_exercise_menu, handle_cardio_km_h_input, delete_exercise_handler
+    start_training, 
+    handle_training_menu_choice,
+    handle_training_menu_fallback, 
+    show_strength_exercises,
+    show_cardio_exercises, 
+    choose_exercise_type,
+    handle_strength_exercise_selection, 
+    handle_set_input,
+    handle_cardio_exercise_selection, 
+    show_finish_summary,           # ← ДОБАВИТЬ эту функцию
+    handle_finish_confirmation,
+    save_exercise, 
+    cancel_exercise, 
+    save_new_exercise_from_training, 
+    handle_cardio_type_selection,
+    handle_cardio_min_meters_input,
+    handle_cardio_km_h_input
 )
-from handlers_exercises.py import (
+from handlers_exercises import (
     show_exercises_management,
     handle_exercises_management_choice,
     choose_exercise_type_mgmt,
@@ -175,6 +184,7 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
 
 
