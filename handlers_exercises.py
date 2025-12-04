@@ -1,6 +1,7 @@
 import logging
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
+from handlers_common import start
 
 from database import get_custom_exercises, add_custom_exercise, delete_custom_exercise
 from utils_constants import *
@@ -247,3 +248,4 @@ async def delete_exercise_handler(update: Update, context: ContextTypes.DEFAULT_
     
 
     return EXERCISES_MANAGEMENT
+
