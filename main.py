@@ -121,6 +121,11 @@ def main():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_exercises_management_choice),
                 ],
                 
+                ADD_EXERCISE_TYPE_MGMT: [
+                    MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к управлению упражнениями)$'), add_custom_exercise_mgmt),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_mgmt),
+                ],
+                
                 CONFIRM_FINISH: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_finish_confirmation),
                 ],
@@ -161,6 +166,7 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
 
 
