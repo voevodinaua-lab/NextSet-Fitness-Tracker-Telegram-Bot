@@ -657,12 +657,16 @@ async def save_cardio_exercise(update: Update, context: ContextTypes.DEFAULT_TYP
         exercise_data = context.user_data['current_exercise'].copy()
         
         if format_type == 'min_meters':
+            # ПРЕОБРАЗУЕМ В INT для distance_meters
+            distance_meters = int(value)  # ← ВАЖНО!
+            
             exercise_data.update({
                 'time_minutes': time_minutes,
-                'distance_meters': value,
-                'details': f"{time_minutes} минут, {value} метров"
+                'distance_meters': distance_meters,  # ← целое число
+                'details': f"{time_minutes} минут, {distance_meters} метров"
             })
         else:  # km_h
+            # speed_kmh может быть float
             exercise_data.update({
                 'time_minutes': time_minutes,
                 'speed_kmh': value,
@@ -692,7 +696,7 @@ async def save_cardio_exercise(update: Update, context: ContextTypes.DEFAULT_TYP
     except (ValueError, IndexError):
         if format_type == 'min_meters':
             await update.message.reply_text(
-                "❌ Неверный формат. Введите два числа:\n"
+                "❌ Неверный формат. Введите два целых числа:\n"
                 "**Время_в_минутах Дистанция_в_метрах**\n\n"
                 "📝 Пример: 30 5000"
             )
@@ -892,6 +896,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
