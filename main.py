@@ -24,7 +24,9 @@ from handlers_training import (
     save_new_exercise_from_training, 
     handle_cardio_type_selection,
     handle_cardio_min_meters_input,
-    handle_cardio_km_h_input
+    handle_cardio_km_h_input,
+    handle_measurements_choice,
+    save_measurements,
 )
 from handlers_exercises import (
     show_exercises_management,
@@ -95,6 +97,15 @@ def main():
                 TRAINING_MENU: [
                     MessageHandler(filters.Regex('^(💪 Силовые упражнения|🏃 Кардио|✏️ Добавить свое упражнение|🏁 Завершить тренировку)$'), handle_training_menu_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
+                ],
+
+                INPUT_MEASUREMENTS_CHOICE: [
+                    MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
+                ],
+
+                INPUT_MEASUREMENTS: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, save_measurements),  
                 ],
                 
                 CHOOSE_STRENGTH_EXERCISE: [
@@ -184,6 +195,7 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
 
 
