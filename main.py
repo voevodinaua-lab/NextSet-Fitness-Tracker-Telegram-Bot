@@ -99,6 +99,11 @@ def main():
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_training_menu_fallback),
                 ],
 
+                ADD_EXERCISE_TYPE: [
+                    MessageHandler(filters.Regex('^(💪 Силовое упражнение|🏃 Кардио упражнение|🔙 Назад к тренировке)$'), add_custom_exercise_from_training),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, add_custom_exercise_from_training),
+                ],
+                
                 INPUT_MEASUREMENTS_CHOICE: [
                     MessageHandler(filters.Regex('^(📝 Ввести замеры|⏭️ Пропустить замеры|🔙 Главное меню)$'), handle_measurements_choice),
                     MessageHandler(filters.TEXT & ~filters.COMMAND, handle_measurements_choice),
@@ -195,6 +200,7 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
 
 
