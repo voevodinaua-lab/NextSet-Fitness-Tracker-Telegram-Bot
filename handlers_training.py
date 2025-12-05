@@ -747,6 +747,7 @@ async def add_custom_exercise_from_training(update: Update, context: ContextType
             reply_markup=ReplyKeyboardRemove()
         )
         return INPUT_NEW_STRENGTH_EXERCISE
+        
     elif '🏃 Кардио' in choice:
         context.user_data['adding_exercise_type'] = CARDIO_TYPE
         await update.message.reply_text(
@@ -905,6 +906,7 @@ async def handle_training_menu_simple(update: Update, context: ContextTypes.DEFA
             reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
         return TRAINING_MENU
+
 
 
 
