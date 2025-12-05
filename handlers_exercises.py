@@ -59,7 +59,7 @@ async def handle_exercises_management_choice(update: Update, context: ContextTyp
     
     else:
         print("-> show_exercises_management (fallback)")
-        return await show_exercises_management(update, context
+        return await show_exercises_management(update, context)
                                               
 async def choose_exercise_type_mgmt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор типа упражнения для добавления (из управления)"""
@@ -248,4 +248,5 @@ async def delete_exercise_handler(update: Update, context: ContextTypes.DEFAULT_
     
 
     return EXERCISES_MANAGEMENT
+
 
