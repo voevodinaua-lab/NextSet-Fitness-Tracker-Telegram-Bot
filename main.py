@@ -27,6 +27,7 @@ from handlers_training import (
     handle_cardio_km_h_input,
     handle_measurements_choice,
     save_measurements,
+    add_custom_exercise_from_training,
 )
 from handlers_exercises import (
     show_exercises_management,
@@ -200,6 +201,7 @@ if __name__ == '__main__':
         )
     else:
         print("❌ Не удалось запустить бота")
+
 
 
 
