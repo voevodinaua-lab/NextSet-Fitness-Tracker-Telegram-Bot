@@ -158,9 +158,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return MAIN_MENU
 
+# Тексты кнопок главного меню (если пользователь в INACTIVE, но клавиатура осталась от главного меню)
+_MAIN_MENU_BUTTON_TEXTS = frozenset(
+    {
+        "💪 Начать тренировку",
+        "📊 История тренировок",
+        "📝 Мои упражнения",
+        "📈 Статистика",
+        "📏 Мои замеры",
+        "📤 Выгрузка данных",
+        "❓ Помощь",
+    }
+)
+
+
 async def handle_clear_data_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка выбора в неактивном состоянии"""
-    choice = update.message.text
+    choice = (update.message.text or "").strip()
     user_id = update.message.from_user.id
     
     if choice == '🚀 Начать':
@@ -184,6 +198,10 @@ async def handle_clear_data_choice(update: Update, context: ContextTypes.DEFAULT
     
     elif choice == '🗑️ Очистить историю':
         return await show_clear_data_confirmation(update, context)
+
+    elif choice in _MAIN_MENU_BUTTON_TEXTS:
+        context.user_data["in_conversation"] = True
+        return await handle_main_menu(update, context)
     
     else:
         # Показываем соответствующие кнопки
@@ -286,10 +304,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка главного меню"""
-    text = update.message.text
+    text = (update.message.text or "").strip()
     user_id = update.message.from_user.id
-    
-    print(f"DEBUG: Получено сообщение: {text} от пользователя {user_id}")
     
     if text == '💪 Начать тренировку':
         from handlers_training import start_training

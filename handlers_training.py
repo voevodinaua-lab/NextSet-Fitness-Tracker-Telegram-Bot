@@ -822,8 +822,8 @@ async def continue_training(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return TRAINING_MENU
     
-    # Сохраняем training_id в context для использования в других функциях
-    context.user_data['current_training_id'] = current_training['training_id']
+    context.user_data['current_training'] = current_training
+    context.user_data['training_id'] = current_training['training_id']
     
     training_info = f"""
 🏃‍♂️ Продолжаем тренировку от {current_training['date_start']}

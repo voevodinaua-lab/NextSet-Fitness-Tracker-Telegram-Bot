@@ -55,6 +55,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+async def _log_errors(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Логирует необработанные исключения в хендлерах (важно для Render и отладки кнопок)."""
+    logger.error("Ошибка в обработчике Telegram:", exc_info=context.error)
+
+
 # Загружаем переменные окружения
 load_dotenv()
 
@@ -196,12 +202,16 @@ def main():
             },
             fallbacks=[
                 CommandHandler('start', start),
-                MessageHandler(filters.Regex('^🚀 Начать$'), start_from_button),
+                MessageHandler(
+                    filters.Regex('^(🚀 Начать|🚀 Продолжить)$'),
+                    start_from_button,
+                ),
             ],
             allow_reentry=True
         )
         
         application.add_handler(conv_handler)
+        application.add_error_handler(_log_errors)
         
         # Простые команды
         async def test(update, context):
