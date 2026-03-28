@@ -1,40 +1,17 @@
 import logging
 import io
 import csv
-import json
 from collections import Counter
 from datetime import datetime
-
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
-from openpyxl.utils import get_column_letter
 
 from telegram import Update, ReplyKeyboardMarkup, InputFile
 from telegram.ext import ContextTypes
 
 from database import get_user_trainings
-from handlers_statistics import parse_training_datetime
+from bot_utils import parse_training_datetime, normalize_exercise_sets
 from utils_constants import *
 
 logger = logging.getLogger(__name__)
-
-HEADER_FILL = PatternFill(fill_type="solid", fgColor="DDEBF7")
-HEADER_FONT = Font(bold=True)
-TITLE_FONT = Font(bold=True, size=14)
-
-
-def _normalize_sets(sets):
-    if sets is None:
-        return []
-    if isinstance(sets, list):
-        return sets
-    if isinstance(sets, str):
-        try:
-            data = json.loads(sets)
-            return data if isinstance(data, list) else []
-        except json.JSONDecodeError:
-            return []
-    return []
 
 
 def filter_trainings_by_period(trainings, period_type: str):
@@ -60,22 +37,32 @@ def _collect_exercise_counter(trainings):
     return cnt
 
 
-def _auto_width(ws, min_width=10, max_width=45):
-    for col_cells in ws.columns:
-        max_len = min_width
-        col_letter = get_column_letter(col_cells[0].column)
-        for cell in col_cells:
-            if cell.value is not None:
-                max_len = max(max_len, min(len(str(cell.value)), max_width))
-        ws.column_dimensions[col_letter].width = max_len + 1
-
-
 def generate_excel_report(user_id: int, period_type: str):
     """
-    Многостраничный Excel: сводка, список тренировок, детали подходов.
-    Удобно открыть в Excel / Google Таблицах (Файл → Импорт).
-    Возвращает bytes или None.
+    Многостраничный Excel. openpyxl подключается только здесь — при ошибке импорта
+    остальной бот (статистика и т.д.) продолжает работать.
     """
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        logger.error("Пакет openpyxl не установлен — Excel-отчёт недоступен")
+        return None
+
+    header_fill = PatternFill(fill_type="solid", fgColor="DDEBF7")
+    header_font = Font(bold=True)
+    title_font = Font(bold=True, size=14)
+
+    def auto_width(ws, min_width=10, max_width=45):
+        for col_cells in ws.columns:
+            max_len = min_width
+            col_letter = get_column_letter(col_cells[0].column)
+            for cell in col_cells:
+                if cell.value is not None:
+                    max_len = max(max_len, min(len(str(cell.value)), max_width))
+            ws.column_dimensions[col_letter].width = max_len + 1
+
     trainings = get_user_trainings(user_id, limit=5000)
     if not trainings:
         return None
@@ -103,11 +90,10 @@ def generate_excel_report(user_id: int, period_type: str):
 
     wb = Workbook()
 
-    # --- Лист «Сводка» ---
     ws0 = wb.active
     ws0.title = "Сводка"
     ws0["A1"] = "Отчёт NextSet"
-    ws0["A1"].font = TITLE_FONT
+    ws0["A1"].font = title_font
     ws0["A2"] = f"Период: {period_title}"
     ws0["A3"] = f"Сформировано: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     ws0["A5"] = "Всего завершённых тренировок"
@@ -120,13 +106,13 @@ def generate_excel_report(user_id: int, period_type: str):
     ws0["B8"] = cardio_n
 
     ws0["A10"] = "Топ упражнений (сколько раз добавлены в тренировки)"
-    ws0["A10"].font = HEADER_FONT
+    ws0["A10"].font = header_font
     ws0["A11"] = "Упражнение"
     ws0["B11"] = "Раз"
-    ws0["A11"].fill = HEADER_FILL
-    ws0["B11"].fill = HEADER_FILL
-    ws0["A11"].font = HEADER_FONT
-    ws0["B11"].font = HEADER_FONT
+    ws0["A11"].fill = header_fill
+    ws0["B11"].fill = header_fill
+    ws0["A11"].font = header_font
+    ws0["B11"].font = header_font
 
     row = 12
     for name, count in top_exercises:
@@ -143,9 +129,8 @@ def generate_excel_report(user_id: int, period_type: str):
         ),
     )
     hint.alignment = Alignment(wrap_text=True)
-    _auto_width(ws0)
+    auto_width(ws0)
 
-    # --- Лист «Тренировки» ---
     ws1 = wb.create_sheet("Тренировки")
     headers = [
         "№",
@@ -159,8 +144,8 @@ def generate_excel_report(user_id: int, period_type: str):
     ]
     for c, h in enumerate(headers, 1):
         cell = ws1.cell(row=1, column=c, value=h)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
+        cell.fill = header_fill
+        cell.font = header_font
 
     for i, training in enumerate(trainings, 1):
         ex_list = training.get("exercises") or []
@@ -175,10 +160,9 @@ def generate_excel_report(user_id: int, period_type: str):
         ws1.cell(row=i + 1, column=7, value=s_count)
         ws1.cell(row=i + 1, column=8, value=c_count)
 
-    _auto_width(ws1)
+    auto_width(ws1)
     ws1.freeze_panes = "A2"
 
-    # --- Лист «Детали подходов» ---
     ws2 = wb.create_sheet("Детали подходов")
     det_headers = [
         "Дата тренировки",
@@ -194,8 +178,8 @@ def generate_excel_report(user_id: int, period_type: str):
     ]
     for c, h in enumerate(det_headers, 1):
         cell = ws2.cell(row=1, column=c, value=h)
-        cell.fill = HEADER_FILL
-        cell.font = HEADER_FONT
+        cell.fill = header_fill
+        cell.font = header_font
 
     dr = 2
     for training in trainings:
@@ -214,7 +198,7 @@ def generate_excel_report(user_id: int, period_type: str):
                 ws2.cell(row=dr, column=10, value=exercise.get("details", ""))
                 dr += 1
             else:
-                sets_list = _normalize_sets(exercise.get("sets"))
+                sets_list = normalize_exercise_sets(exercise.get("sets"))
                 if not sets_list:
                     ws2.cell(row=dr, column=1, value=tdate)
                     ws2.cell(row=dr, column=2, value="Силовое")
@@ -243,7 +227,7 @@ def generate_excel_report(user_id: int, period_type: str):
                     ws2.cell(row=dr, column=10, value="")
                     dr += 1
 
-    _auto_width(ws2)
+    auto_width(ws2)
     ws2.freeze_panes = "A2"
 
     buffer = io.BytesIO()
@@ -294,7 +278,7 @@ def generate_csv_export(user_id, period_type="all_time"):
                     ]
                 )
             else:
-                sets_list = _normalize_sets(exercise.get("sets"))
+                sets_list = normalize_exercise_sets(exercise.get("sets"))
                 if not sets_list:
                     writer.writerow(
                         [
@@ -345,7 +329,10 @@ def _main_menu_keyboard():
 
 async def show_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Меню выгрузки данных"""
-    user_id = update.message.from_user.id
+    msg = update.effective_message
+    if not msg:
+        return EXPORT_MENU
+    user_id = msg.from_user.id
     trainings = get_user_trainings(user_id, limit=1)
 
     stats_text = ""
@@ -358,7 +345,7 @@ async def show_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         ["🔙 Главное меню"],
     ]
 
-    await update.message.reply_text(
+    await msg.reply_text(
         f"📤 Выгрузка отчёта{stats_text}\n"
         "📗 Excel (.xlsx) — сводка, список тренировок и все подходы (удобно для Google Таблиц).\n"
         "📄 CSV — те же детали подходов в текстовом файле.",
@@ -374,17 +361,20 @@ async def _send_excel(
     period_type: str,
     period_label: str,
 ) -> int:
+    msg = update.effective_message
+    if not msg:
+        return MAIN_MENU
     blob = generate_excel_report(user_id, period_type)
     if not blob:
-        await update.message.reply_text(
-            f"❌ Нет данных для выгрузки ({period_label}).",
+        await msg.reply_text(
+            f"❌ Нет данных для выгрузки ({period_label}) или не установлен openpyxl на сервере.",
             reply_markup=_main_menu_keyboard(),
         )
         return MAIN_MENU
 
     fname = f"nextset_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     try:
-        await update.message.reply_document(
+        await msg.reply_document(
             document=InputFile(io.BytesIO(blob), filename=fname),
             caption=(
                 f"📊 Отчёт Excel — {period_label}\n\n"
@@ -395,7 +385,7 @@ async def _send_excel(
         )
     except Exception as e:
         logger.error("Ошибка отправки Excel: %s", e, exc_info=True)
-        await update.message.reply_text(
+        await msg.reply_text(
             "❌ Не удалось сформировать или отправить Excel. Попробуйте позже.",
             reply_markup=_main_menu_keyboard(),
         )
@@ -409,9 +399,12 @@ async def _send_csv(
     period_type: str,
     period_label: str,
 ) -> int:
+    msg = update.effective_message
+    if not msg:
+        return MAIN_MENU
     csv_data = generate_csv_export(user_id, period_type)
     if not csv_data:
-        await update.message.reply_text(
+        await msg.reply_text(
             f"❌ Нет данных для выгрузки ({period_label}).",
             reply_markup=_main_menu_keyboard(),
         )
@@ -422,7 +415,7 @@ async def _send_csv(
         with open(filename, "w", encoding="utf-8-sig", newline="") as f:
             f.write(csv_data)
         with open(filename, "rb") as f:
-            await update.message.reply_document(
+            await msg.reply_document(
                 document=f,
                 filename=filename,
                 caption=f"📄 Детали подходов (CSV) — {period_label}",
@@ -430,7 +423,7 @@ async def _send_csv(
             )
     except Exception as e:
         logger.error("Ошибка выгрузки CSV: %s", e, exc_info=True)
-        await update.message.reply_text(
+        await msg.reply_text(
             "❌ Ошибка при создании CSV.",
             reply_markup=_main_menu_keyboard(),
         )
@@ -444,14 +437,17 @@ async def _send_csv(
 
 async def handle_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Выбор типа и периода выгрузки."""
-    text = (update.message.text or "").strip()
+    msg = update.effective_message
+    if not msg:
+        return EXPORT_MENU
+    text = (msg.text or "").strip()
 
     if text == "🔙 Главное меню":
         from handlers_common import start
 
         return await start(update, context)
 
-    user_id = update.message.from_user.id
+    user_id = msg.from_user.id
 
     if text == "📗 Excel — вся история":
         return await _send_excel(update, context, user_id, "all_time", "вся история")
@@ -466,7 +462,7 @@ async def handle_export_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
             update, context, user_id, "current_month", "текущий месяц"
         )
 
-    await update.message.reply_text(
+    await msg.reply_text(
         "❌ Пожалуйста, используйте кнопки меню.",
         reply_markup=ReplyKeyboardMarkup(
             [

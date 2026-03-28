@@ -4,18 +4,17 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from database import get_user_trainings, get_custom_exercises
+from bot_utils import parse_training_datetime, normalize_exercise_sets
 from utils_constants import *
 
 logger = logging.getLogger(__name__)
 
 
-def parse_training_datetime(date_str: str) -> datetime:
-    """Разбор даты начала тренировки из формата БД/бота."""
-    return datetime.strptime((date_str or "").strip(), "%d.%m.%Y %H:%M")
-
-
 async def show_statistics_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать меню статистики"""
+    msg = update.effective_message
+    if not msg:
+        return STATS_MENU
     keyboard = [
         ['📊 Общая статистика', '📅 Текущая неделя'],
         ['📅 Текущий месяц', '📅 Текущий год'],
@@ -23,7 +22,7 @@ async def show_statistics_menu(update: Update, context: ContextTypes.DEFAULT_TYP
         ['🔙 Главное меню']
     ]
     
-    await update.message.reply_text(
+    await msg.reply_text(
         "📈 Выберите тип статистики:",
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
@@ -227,7 +226,7 @@ async def show_exercise_stats(update: Update, context: ContextTypes.DEFAULT_TYPE
     exercise_stats = {}
     
     for training in trainings:
-        for exercise in training['exercises']:
+        for exercise in training.get("exercises") or []:
             name = exercise['name']
             if name not in exercise_stats:
                 exercise_stats[name] = {
@@ -240,17 +239,24 @@ async def show_exercise_stats(update: Update, context: ContextTypes.DEFAULT_TYPE
             
             exercise_stats[name]['count'] += 1
             
-            if not exercise.get('is_cardio') and exercise.get('sets'):
+            sets_list = normalize_exercise_sets(exercise.get('sets'))
+            if not exercise.get('is_cardio') and sets_list:
                 # Статистика для силовых упражнений
-                weights = [s['weight'] for s in exercise['sets']]
-                reps = [s['reps'] for s in exercise['sets']]
+                weights = [
+                    s['weight'] for s in sets_list
+                    if isinstance(s, dict) and 'weight' in s
+                ]
+                reps = [
+                    s['reps'] for s in sets_list
+                    if isinstance(s, dict) and 'reps' in s
+                ]
                 
                 exercise_stats[name]['max_weight'] = max(
                     exercise_stats[name]['max_weight'], 
                     max(weights) if weights else 0
                 )
                 exercise_stats[name]['total_reps'] += sum(reps)
-                exercise_stats[name]['total_sets'] += len(exercise['sets'])
+                exercise_stats[name]['total_sets'] += len(sets_list)
     
     if not exercise_stats:
         await update.message.reply_text(
@@ -401,7 +407,10 @@ def calculate_yearly_stats(trainings):
 
 async def handle_statistics_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Маршрутизация сообщений внутри экрана статистики."""
-    text = (update.message.text or "").strip()
+    msg = update.effective_message
+    if not msg:
+        return STATS_MENU
+    text = (msg.text or "").strip()
 
     if text == "📊 Общая статистика":
         return await show_general_statistics(update, context)
@@ -418,7 +427,15 @@ async def handle_statistics_menu(update: Update, context: ContextTypes.DEFAULT_T
 
         return await start(update, context)
 
-    await update.message.reply_text(
+    # Осталась клавиатура главного меню (несовпадение состояния) — обрабатываем как главное меню
+    from handlers_common import _MAIN_MENU_BUTTON_TEXTS, handle_main_menu
+
+    if text in _MAIN_MENU_BUTTON_TEXTS:
+        return await handle_main_menu(update, context)
+    if text == "📈 Статистика":
+        return await show_statistics_menu(update, context)
+
+    await msg.reply_text(
         "❌ Пожалуйста, используйте кнопки меню.",
         reply_markup=ReplyKeyboardMarkup(
             [

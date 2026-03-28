@@ -304,8 +304,11 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Обработка главного меню"""
-    text = (update.message.text or "").strip()
-    user_id = update.message.from_user.id
+    msg = update.effective_message
+    if not msg:
+        return MAIN_MENU
+    text = (msg.text or "").strip()
+    user_id = msg.from_user.id
     
     if text == '💪 Начать тренировку':
         from handlers_training import start_training
@@ -328,7 +331,7 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif text == '❓ Помощь':
         return await help_command(update, context)
     else:
-        await update.message.reply_text(
+        await msg.reply_text(
             "❌ Пожалуйста, используйте кнопки меню",
             reply_markup=ReplyKeyboardMarkup([
                 ['💪 Начать тренировку', '📊 История тренировок'],
