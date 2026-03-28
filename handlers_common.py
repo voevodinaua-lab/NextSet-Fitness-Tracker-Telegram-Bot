@@ -296,7 +296,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 📊 **История тренировок** - просмотр прошлых тренировок
 📈 **Статистика** - общая статистика за неделю/месяц/год
 📏 **Мои замеры** - история всех ваших замеров
-📤 **Выгрузка данных** - скачивание CSV файла с данными
+📤 **Выгрузка данных** - Excel (сводка + детали) или CSV для Google Таблиц
     """
     
     await update.message.reply_text(help_text)

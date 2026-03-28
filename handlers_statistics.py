@@ -8,6 +8,12 @@ from utils_constants import *
 
 logger = logging.getLogger(__name__)
 
+
+def parse_training_datetime(date_str: str) -> datetime:
+    """Разбор даты начала тренировки из формата БД/бота."""
+    return datetime.strptime((date_str or "").strip(), "%d.%m.%Y %H:%M")
+
+
 async def show_statistics_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Показать меню статистики"""
     keyboard = [
@@ -84,8 +90,24 @@ async def show_weekly_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """Показать статистику за текущую неделю"""
     user_id = update.message.from_user.id
     trainings = get_user_trainings(user_id, limit=1000)
-    
-    week_stats = calculate_weekly_stats(trainings)
+
+    try:
+        week_stats = calculate_weekly_stats(trainings)
+    except (ValueError, TypeError, KeyError) as e:
+        logger.exception("Ошибка расчёта недельной статистики: %s", e)
+        await update.message.reply_text(
+            "❌ Не удалось посчитать статистику за неделю. Проверьте формат данных или попробуйте позже.",
+            reply_markup=ReplyKeyboardMarkup(
+                [
+                    ["📊 Общая статистика", "📅 Текущая неделя"],
+                    ["📅 Текущий месяц", "📅 Текущий год"],
+                    ["📋 Статистика по упражнениям"],
+                    ["🔙 Главное меню"],
+                ],
+                resize_keyboard=True,
+            ),
+        )
+        return STATS_MENU
     
     stats_text = "📅 СТАТИСТИКА ЗА ТЕКУЩУЮ НЕДЕЛЮ\n\n"
     
@@ -101,7 +123,7 @@ async def show_weekly_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if week_stats['trainings_list']:
             stats_text += f"\n📋 Тренировки этой недели:\n"
             for training in week_stats['trainings_list'][:5]:  # Показываем до 5 тренировок
-                stats_text += f"• {training['date']}: {len(training['exercises'])} упражнений\n"
+                stats_text += f"• {training['date_start']}: {len(training['exercises'])} упражнений\n"
     
     await update.message.reply_text(
         stats_text,
@@ -284,7 +306,7 @@ def calculate_weekly_stats(trainings):
     cardio_count = 0
     
     for training in trainings:
-        training_date = datetime.strptime(training['date_start'], "%d.%m.%Y %H:%M")
+        training_date = parse_training_datetime(training['date_start'])
         if training_date >= start_of_week:
             weekly_trainings.append(training)
             total_exercises += len(training['exercises'])
@@ -315,7 +337,7 @@ def calculate_monthly_stats(trainings):
     exercise_counts = {}
     
     for training in trainings:
-        training_date = datetime.strptime(training['date_start'], "%d.%m.%Y %H:%M")
+        training_date = parse_training_datetime(training['date_start'])
         if training_date >= start_of_month:
             monthly_trainings.append(training)
             total_exercises += len(training['exercises'])
@@ -353,7 +375,7 @@ def calculate_yearly_stats(trainings):
     monthly_stats = {}
     
     for training in trainings:
-        training_date = datetime.strptime(training['date_start'], "%d.%m.%Y %H:%M")
+        training_date = parse_training_datetime(training['date_start'])
         if training_date >= start_of_year:
             yearly_trainings.append(training)
             total_exercises += len(training['exercises'])
